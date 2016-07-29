@@ -1,9 +1,0 @@
-[2016-07-29 09:27:18 919 37f9c700] 成功连接行情服务器
-[2016-07-29 09:27:18 920 37f9c700] 成功启动本地http客户端用于接收远程策略so以及ini
-[2016-07-29 09:28:40 225 fd6f700] 成功连接行情服务器
-[2016-07-29 09:28:40 225 fd6f700] 成功启动本地http客户端用于接收远程策略so以及ini
-[2016-07-29 09:28:40 231 fd6f700] [e0c5:6ca44c69] (N=3, name=uemgr_ctp:role=proxy) 上线
-[2016-07-29 09:28:40 795 fd6f700] 父进程(29388)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
-[2016-07-29 09:28:51 857 fd6f700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
-[2016-07-29 09:28:51 885 fd6f700] 收到子进程退出信号，回收子进程 pid = 29434, sts = 0
-[2016-07-29 09:28:52 228 fd6f700] [e0c5:6ca44c69] (N=3, name=uemgr_ctp:role=proxy) 下线
