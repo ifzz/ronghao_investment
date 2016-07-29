@@ -1,0 +1,26 @@
+[2016-07-06 11:14:38 215 d97fa700] [e500:5266c41f] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:14:38 238 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:秒:12)
+[2016-07-06 11:14:38 238 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:1)
+[2016-07-06 11:14:38 238 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:5)
+[2016-07-06 11:14:38 238 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:10)
+[2016-07-06 11:14:38 238 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:15)
+[2016-07-06 11:14:38 238 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:30)
+[2016-07-06 11:14:38 238 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:小时:1)
+[2016-07-06 11:14:38 239 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(kline:日:1)
+[2016-07-06 11:14:38 239 d97fa700] 注册data插件 input=(sys::def:tick:0) output=(normalize:normalize:0)
+[2016-07-06 11:15:09 327 d97fa700] [e501:5266c420] (N=7,name=uemgr:role=proxy) 上线
+[2016-07-06 11:15:09 327 d97fa700] uemgr 订阅所有股票行情
+[2016-07-06 11:17:08 254 d97fa700] [e502:5266c421] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-06 11:17:08 255 d97fa700] strategy_proxy 订阅所有股票行情
+[2016-07-06 11:26:25 854 d97fa700] [e500:5266c41f] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:32:39 276 d97fa700] [e500:5266c422] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:35:23 282 d97fa700] [e500:5266c422] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:35:38 776 d97fa700] [e500:5266c423] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:37:48 169 d97fa700] [e500:5266c423] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:37:49 463 d97fa700] [e500:5266c424] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:45:31 777 d97fa700] [e500:5266c424] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:45:32 966 d97fa700] [e500:5266c425] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:45:46 111 d97fa700] [e500:5266c425] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:46:26 091 d97fa700] [e500:5266c426] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:50:25 005 d97fa700] [e500:5266c426] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:50:26 462 d97fa700] [e500:5266c427] (N=2,name=md_cna:role=md_server) 上线

@@ -1,0 +1,21 @@
+[2016-07-21 11:26:57 766 c9ffb700] [c236:4ba4859d] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-21 11:26:57 788 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:秒:12)
+[2016-07-21 11:26:57 788 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:1)
+[2016-07-21 11:26:57 788 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:5)
+[2016-07-21 11:26:57 788 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:10)
+[2016-07-21 11:26:57 788 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:15)
+[2016-07-21 11:26:57 789 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:30)
+[2016-07-21 11:26:57 789 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:小时:1)
+[2016-07-21 11:26:57 789 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:日:1)
+[2016-07-21 11:26:57 789 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:周:1)
+[2016-07-21 11:26:57 789 c9ffb700] 注册data插件 input=(sys::def:tick:0) output=(kline:月:1)
+[2016-07-21 11:27:33 642 c9ffb700] [c237:4ba4859e] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-21 11:27:33 642 c9ffb700] strategy_proxy 订阅所有股票行情
+[2016-07-21 11:27:33 661 c8ff9700] E15_udcp_handler busy queue=4096
+[2016-07-21 11:27:33 691 c9ffb700] [c236:4ba4859d] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-21 11:27:33 694 c9ffb700] [c237:4ba4859e] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-21 11:27:34 693 c9ffb700] [c236:4ba4859f] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-21 11:27:36 673 d559f700] ClearTimer Error: [0x0046d83a:0x7ed56702] not found
+[2016-07-21 11:27:36 693 d559f700] ClearTimer Error: [0x0046d835:0x7ed56703] not found
+[2016-07-21 11:27:47 788 c9ffb700] [c237:4ba485a0] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-21 11:27:47 788 c9ffb700] strategy_proxy 订阅所有股票行情

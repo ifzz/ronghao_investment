@@ -1,0 +1,77 @@
+[2016-07-29 10:01:07 006 3e022700] 成功连接行情服务器
+[2016-07-29 10:01:07 006 3e022700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:01:07 012 3e022700] [402d:49314085] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:01:07 580 3e022700] 父进程(11661)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 10:01:13 049 3e022700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:01:13 072 3e022700] 收到子进程退出信号，回收子进程 pid = 11706, sts = 0
+[2016-07-29 10:01:14 009 3e022700] [402d:49314085] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:01:52 691 1d7ae700] 成功连接行情服务器
+[2016-07-29 10:01:52 691 1d7ae700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:01:52 714 1d7ae700] [ead1:1dc45414] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:01:53 276 1d7ae700] 父进程(12798)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 10:02:02 479 1d7ae700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:02:02 502 1d7ae700] 收到子进程退出信号，回收子进程 pid = 12837, sts = 0
+[2016-07-29 10:02:02 695 1d7ae700] [ead1:1dc45414] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:02:13 419 285eb700] 成功连接行情服务器
+[2016-07-29 10:02:13 419 285eb700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:02:13 427 285eb700] [d52f:700d025d] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:02:13 992 285eb700] 父进程(13338)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 10:02:31 267 285eb700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:02:31 297 285eb700] 收到子进程退出信号，回收子进程 pid = 13390, sts = 0
+[2016-07-29 10:02:31 426 285eb700] [d52f:700d025d] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:02:50 013 7ed3f700] 成功连接行情服务器
+[2016-07-29 10:02:50 013 7ed3f700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:02:50 019 7ed3f700] [6c34:459d4204] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:02:50 562 7ed3f700] [strategy manager] create strategy instance with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:03:05 498 7ed3f700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:03:07 019 7ed3f700] [6c34:459d4204] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:04:17 928 86c45700] 成功连接行情服务器
+[2016-07-29 10:04:17 928 86c45700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:04:17 933 86c45700] [941:60b2f017] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:04:18 483 86c45700] [strategy manager] create strategy instance with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:04:29 742 86c45700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:04:29 932 86c45700] [941:60b2f017] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:04:56 653 3e6e2700] 成功连接行情服务器
+[2016-07-29 10:04:56 653 3e6e2700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:04:56 660 3e6e2700] [e343:6e5d425f] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:04:57 204 3e6e2700] [strategy manager] create strategy instance with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:04:58 561 3e6e2700] [e342:6e5d4260] (N=0, name=:role=user) 上线
+[2016-07-29 10:05:07 007 3e6e2700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:05:07 657 3e6e2700] [e343:6e5d425f] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:05:07 658 3e6e2700] [e342:6e5d4260] (N=0, name=:role=user) 下线
+[2016-07-29 10:07:31 389 bec97700] 成功连接行情服务器
+[2016-07-29 10:07:31 389 bec97700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:07:31 395 bec97700] [58f7:4b948d7b] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:07:32 237 bec97700] [strategy manager] create strategy instance with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:07:32 665 bec97700] [58f6:4b948d7c] (N=0, name=:role=user) 上线
+[2016-07-29 10:08:39 543 bec97700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:08:40 406 bec97700] [58f7:4b948d7b] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:08:40 407 bec97700] [58f6:4b948d7c] (N=0, name=:role=user) 下线
+[2016-07-29 10:08:40 620 bec97700] [strategy_manager::destroy]中断与行情服务器的连接，释放服务申请的资源
+[2016-07-29 10:09:26 313 d20c2700] 成功连接行情服务器
+[2016-07-29 10:09:26 314 d20c2700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:09:26 320 d20c2700] [9333:3ea86af5] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:09:26 869 d20c2700] 父进程(23834)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 10:09:28 416 d20c2700] [9332:3ea86af6] (N=0, name=:role=user) 上线
+[2016-07-29 10:09:50 936 d20c2700] [9332:3ea86af6] (N=0, name=:role=user) 下线
+[2016-07-29 10:09:57 130 d20c2700] [9332:3ea86af7] (N=0, name=:role=user) 上线
+[2016-07-29 10:10:14 526 d20c2700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:10:14 553 d20c2700] 收到子进程退出信号，回收子进程 pid = 23866, sts = 0
+[2016-07-29 10:10:15 325 d20c2700] [9333:3ea86af5] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:10:15 326 d20c2700] [9332:3ea86af7] (N=0, name=:role=user) 下线
+[2016-07-29 10:10:48 408 eb740700] 成功连接行情服务器
+[2016-07-29 10:10:48 408 eb740700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:10:48 413 eb740700] [b4:c3f73d7] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:10:48 972 eb740700] 父进程(25868)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 10:10:57 025 eb740700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:10:57 054 eb740700] 收到子进程退出信号，回收子进程 pid = 25909, sts = 0
+[2016-07-29 10:10:57 411 eb740700] [b4:c3f73d7] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:12:58 904 eacf7700] 成功连接行情服务器
+[2016-07-29 10:12:58 905 eacf7700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 10:12:58 913 eacf7700] [ef1d:6688e0be] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 10:12:59 465 eacf7700] 父进程(29009)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 10:13:10 111 eacf7700] [ef1c:6688e0bf] (N=0, name=:role=user) 上线
+[2016-07-29 10:13:37 225 eacf7700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 10:13:37 246 eacf7700] 收到子进程退出信号，回收子进程 pid = 29054, sts = 0
+[2016-07-29 10:13:37 916 eacf7700] [ef1d:6688e0be] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 10:13:37 916 eacf7700] [ef1c:6688e0bf] (N=0, name=:role=user) 下线

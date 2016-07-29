@@ -1,0 +1,3 @@
+[2016-07-12 13:42:03 845 f9ffb700] [5eec:5c67a8a5] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-12 13:42:23 623 f9ffb700] [5eec:5c67a8a6] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-12 13:42:23 623 f9ffb700] strategy_proxy 订阅所有股票行情

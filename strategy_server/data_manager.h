@@ -63,7 +63,7 @@ private:
 
 private:
 	std::mutex m_mtx_for_trade_request;
-	E15_Id m_proxy_id;
+	E15_Id m_proxy_id, m_dia_id, m_client_id;
 	std::map<std::string, E15_Id> m_role_id;
 	strategy_manager *m_data_mgr;
 	file_receiver *m_file_receiver;

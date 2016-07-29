@@ -1,0 +1,14 @@
+[2016-07-29 09:42:03 216 238ab700] 成功连接行情服务器
+[2016-07-29 09:42:03 216 238ab700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 09:42:03 221 238ab700] [e6e1:16006845] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 09:42:03 866 238ab700] 父进程(15959)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 09:42:12 522 238ab700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 09:42:12 546 238ab700] 收到子进程退出信号，回收子进程 pid = 15998, sts = 0
+[2016-07-29 09:42:13 220 238ab700] [e6e1:16006845] (N=3, name=uemgr_ctp:role=proxy) 下线
+[2016-07-29 09:42:30 754 427e0700] 成功连接行情服务器
+[2016-07-29 09:42:30 754 427e0700] 成功启动本地http客户端用于接收远程策略so以及ini
+[2016-07-29 09:42:30 760 427e0700] [116e:51321e2b] (N=3, name=uemgr_ctp:role=proxy) 上线
+[2016-07-29 09:42:31 321 427e0700] 父进程(16668)发送合约列表(bytes=35438)和指标描述信息(bytes=9142)完毕！
+[2016-07-29 09:52:03 922 427e0700] [strategy manager] unload strategy with library name `./strategy_so/libstrategy_demo3.so` successfully!
+[2016-07-29 09:52:03 949 427e0700] 收到子进程退出信号，回收子进程 pid = 16714, sts = 0
+[2016-07-29 09:52:04 869 427e0700] [116e:51321e2b] (N=3, name=uemgr_ctp:role=proxy) 下线

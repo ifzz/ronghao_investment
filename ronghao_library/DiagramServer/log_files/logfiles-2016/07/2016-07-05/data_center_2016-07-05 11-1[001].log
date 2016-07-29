@@ -1,0 +1,29 @@
+[2016-07-05 11:03:15 931 6effd700] [472b:40383ab] (N=7,name=uemgr:role=proxy) 上线
+[2016-07-05 11:03:15 931 6effd700] uemgr 订阅所有股票行情
+[2016-07-05 11:08:37 861 6effd700] [4728:40383aa] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-05 11:10:17 606 6effd700] [4728:40383ac] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-05 11:10:17 606 6effd700] strategy_proxy 订阅所有股票行情
+[2016-07-05 11:10:39 604 6effd700] [4728:40383ac] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-05 11:13:18 195 6effd700] [4728:40383ad] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-05 11:13:18 195 6effd700] strategy_proxy 订阅所有股票行情
+[2016-07-05 11:16:41 575 6effd700] [4728:40383ad] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-05 11:21:59 369 6effd700] [4728:40383ae] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-05 11:21:59 369 6effd700] strategy_proxy 订阅所有股票行情
+[2016-07-05 11:25:14 379 6effd700] [4728:40383ae] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-05 11:25:48 157 6effd700] [4728:40383af] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-05 11:25:48 157 6effd700] strategy_proxy 订阅所有股票行情
+[2016-07-05 11:26:18 093 6effd700] [4728:40383af] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-05 11:26:19 903 6effd700] [4728:40383b0] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-05 11:26:19 903 6effd700] strategy_proxy 订阅所有股票行情
+[2016-07-05 11:28:19 056 6effd700] [4728:40383b0] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-05 11:28:20 457 6effd700] [4728:40383b1] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-05 11:28:20 457 6effd700] strategy_proxy 订阅所有股票行情
+[2016-07-05 11:29:31 492 6effd700] [472a:40383a8] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-05 11:32:57 608 6effd700] [472a:40383b2] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-05 11:36:43 653 6effd700] [472a:40383b2] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-05 11:39:15 112 6effd700] [4728:40383b1] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-05 11:43:08 757 6effd700] [472a:40383b3] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-05 11:43:25 506 6effd700] [4728:40383b4] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-05 11:43:25 506 6effd700] strategy_proxy 订阅所有股票行情
+[2016-07-05 11:44:54 933 6effd700] [472a:40383b3] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-05 11:45:03 650 6effd700] [472a:40383b5] (N=2,name=md_cna:role=md_server) 上线

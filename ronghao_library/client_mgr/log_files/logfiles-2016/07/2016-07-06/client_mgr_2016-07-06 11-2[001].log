@@ -1,0 +1,17 @@
+[2016-07-06 11:15:09 327 509fc700] [a8c1:388dad46] (N=6,name=data_001:role=data_factory) 上线
+[2016-07-06 11:15:09 330 509fc700] [a8c0:388dad47] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:15:09 330 509fc700] [a8c1:388dad46] 响应(cmd=7,seq=0,status=1187840)
+[2016-07-06 11:15:09 330 509fc700] [a8c1:388dad46] 响应(cmd=11,seq=2,status=3878912)
+[2016-07-06 11:15:27 100 509fc700] [a8c3:388dad48] (N=0,name=:role=view) 上线
+[2016-07-06 11:26:25 853 509fc700] [a8c0:388dad47] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:32:39 276 509fc700] [a8c0:388dad49] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:35:23 281 509fc700] [a8c0:388dad49] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:35:38 774 509fc700] [a8c0:388dad4a] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:37:48 168 509fc700] [a8c0:388dad4a] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:37:49 461 509fc700] [a8c0:388dad4b] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:45:31 776 509fc700] [a8c0:388dad4b] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:45:32 965 509fc700] [a8c0:388dad4c] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:45:46 112 509fc700] [a8c0:388dad4c] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:46:26 090 509fc700] [a8c0:388dad4d] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-06 11:50:25 006 509fc700] [a8c0:388dad4d] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-06 11:50:26 462 509fc700] [a8c0:388dad4e] (N=2,name=md_cna:role=md_server) 上线

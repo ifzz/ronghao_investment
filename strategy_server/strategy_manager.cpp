@@ -22,7 +22,7 @@ void processor::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 		int32_t cmd = Stock_Msg_DiagramGroup;
 		m_seria.insert("cmd", (const char*)&cmd, sizeof(cmd));
 		m_seria.insert("data", j->raw->c_str(), j->raw->Length());
-		m_seria.write(m_rd_fifo);
+		m_seria.write(m_wr_fifo);
 		m_seria.reset();
 	}
 }
@@ -95,6 +95,7 @@ bool processor::create_child_for_test(const std::string& l, const std::string& c
 		m_seria.reset();
 		print_thread_safe(g_log, "父进程(%d)发送合约列表(bytes=%d)和指标描述信息(bytes=%d)完毕！\n",
 				getpid(), ins_list->Length(), diagram_info->Length());
+		m_mgr_ptr->register_rfifo(m_rd_fifo);
 	}
 	return true;
 }
@@ -104,6 +105,7 @@ void processor::destroy_child_for_test(const std::string& l, const std::string& 
 	m_seria.insert("cmd", (const char*)&sig_quit, sizeof(sig_quit));
 	m_seria.write(m_wr_fifo);
 	m_seria.reset();
+	m_mgr_ptr->unregister_rfifo(m_rd_fifo);
 
 	close(m_rd_fifo);
 	close(m_wr_fifo);
@@ -219,7 +221,7 @@ void strategy_manager::data_dispatch(int cmd, E15_String *&data) {
 		if (data->Length() < DEPTH_MARKET_HEAD_LEN)
 			return;
 
-		std::shared_ptr<strategy_job> job = std::make_shared<strategy_job>();
+		std::shared_ptr<strategy_job> job = std::make_shared<strategy_job>(m_ins_info[data->c_str()].type);
 		if (g_conf.for_produce) {
 			job->group = parse_diagram_group(data->c_str(), data->Length());
 		} else {
@@ -353,7 +355,6 @@ void strategy_manager::load_strategy(const std::vector<std::string>& args) {
 		return;
 	}
 	m_libraries[l].ini_map[c] = p;
-	m_threads.register_processor(p);
 
 	E15_Ini ini;		//在配置中存在关注的合约，若还没订阅则需要订阅
 	ini.Read(c.c_str());
@@ -371,10 +372,12 @@ void strategy_manager::load_strategy(const std::vector<std::string>& args) {
 		if (!m_ins_info[ins].subscribe_cnt)
 			sa.Add(ins.data(), ins.size());
 		m_ins_info[ins].subscribe_cnt++;
+		p->register_type(m_ins_info[ins].type);
 	}
 	if (sa.Size())
 		m_data_recv->request_subscribe_by_id(sa, start, end, interval);
 	p->store_sub_ins(ins_vec);
+	m_threads.register_processor(p);
 }
 
 void strategy_manager::unload_strategy(const std::vector<std::string>& args) {

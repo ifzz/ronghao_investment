@@ -43,7 +43,7 @@ void strategy_demo3::execute(depth_dia_group& group) {
 	auto& depth = group.depth;
 	if (m_deal_price != -1) {
 		int64_t tick = m_ins_info[group.ins_id].price_tick;
-		if (abs(depth->base.bid_ask.Ask-depth->base.bid_ask.Bid) >= 2*tick) {
+		if (abs(depth->base.bid_ask.Ask-depth->base.bid_ask.Bid) >= 1*tick) {
 			//当前买价和卖价之差5个tick，进一步观察成交价
 			if ((depth->base.nPrice > m_deal_price) || (depth->base.nPrice < m_deal_price)) {
 				print_thread_safe("[strategy_demo3]当前深度行情的买价：%d，卖价：%d，tick：%d, "

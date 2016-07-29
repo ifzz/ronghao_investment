@@ -1,0 +1,15 @@
+[2016-07-07 09:00:08 481 55bfa700] [MDObj] Disconnect.
+[2016-07-07 09:00:08 491 73fd4780] TDF_Open returned:-99
+[2016-07-07 09:00:08 492 73fd4780] connect failure!, try reconnect 1 seconds later!
+[2016-07-07 09:00:09 492 73fd4780] try connect to:119.145.12.72:10000, user:szgwtest001001, pwd:735460
+[2016-07-07 09:00:19 564 55bfa700] [MDObj] Disconnect.
+[2016-07-07 09:00:19 575 73fd4780] TDF_Open returned:-99
+[2016-07-07 09:00:19 575 73fd4780] connect failure!, try reconnect 1 seconds later!
+[2016-07-07 09:00:20 575 73fd4780] try connect to:119.145.12.72:10000, user:szgwtest001001, pwd:735460
+[2016-07-07 09:00:30 647 55bfa700] [MDObj] Disconnect.
+[2016-07-07 09:00:30 657 73fd4780] TDF_Open returned:-99
+[2016-07-07 09:00:30 658 73fd4780] connect failure!, try reconnect 1 seconds later!
+[2016-07-07 09:00:31 658 73fd4780] try connect to:119.145.12.72:10000, user:szgwtest001001, pwd:735460
+[2016-07-07 09:00:39 506 55bfa700] [MDObj] Login Successfully. info:欢迎使用宏汇DataFeed系统!, nMarkets:3
+[2016-07-07 09:00:59 577 55bfa700] [MDObj] Disconnect.
+[2016-07-07 09:00:59 589 73fd4780] TDF_Open returned:-95

@@ -2,7 +2,7 @@
 
 class strategy_job : public crx::evd_thread_job {
 public:
-	strategy_job() : raw(nullptr) {}
+	strategy_job(int64_t type) : crx::evd_thread_job(type), raw(nullptr) {}
 	virtual ~strategy_job() {
 		if (raw)
 			delete raw;

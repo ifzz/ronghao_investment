@@ -1,0 +1,14 @@
+[2016-07-08 09:30:00 264 6ffff700] [b79d:67899535] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:秒:12)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:1)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:5)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:10)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:15)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:30)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:小时:1)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(kline:日:1)
+[2016-07-08 09:30:00 273 6ffff700] 注册data插件 input=(sys::def:tick:0) output=(normalize:normalize:0)
+[2016-07-08 09:30:20 549 6ffff700] [b79c:67899536] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-08 09:30:20 549 6ffff700] strategy_proxy 订阅所有股票行情
+[2016-07-08 09:30:28 274 6ffff700] [b79d:67899535] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-08 09:30:29 292 6ffff700] [b79d:67899537] (N=2,name=md_cna:role=md_server) 上线

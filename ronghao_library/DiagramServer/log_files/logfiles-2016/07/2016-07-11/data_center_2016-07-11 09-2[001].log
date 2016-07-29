@@ -1,0 +1,32 @@
+[2016-07-11 09:16:02 873 5e7fc700] [260b:4157205c] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-11 09:16:02 888 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:秒:12)
+[2016-07-11 09:16:02 888 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:1)
+[2016-07-11 09:16:02 888 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:5)
+[2016-07-11 09:16:02 888 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:10)
+[2016-07-11 09:16:02 888 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:15)
+[2016-07-11 09:16:02 888 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:分钟:30)
+[2016-07-11 09:16:02 888 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:小时:1)
+[2016-07-11 09:16:02 889 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(kline:日:1)
+[2016-07-11 09:16:02 889 5e7fc700] 注册data插件 input=(sys::def:tick:0) output=(normalize:normalize:0)
+[2016-07-11 09:16:27 834 5e7fc700] [260a:4157205d] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-11 09:16:27 834 5e7fc700] strategy_proxy 订阅所有股票行情
+[2016-07-11 09:16:27 839 5d7fa700] E15_udcp_handler busy queue=4096
+[2016-07-11 09:16:28 880 5e7fc700] [260b:4157205c] (N=2,name=md_cna:role=md_server) 下线
+[2016-07-11 09:16:29 896 5e7fc700] [260b:4157205e] (N=2,name=md_cna:role=md_server) 上线
+[2016-07-11 09:16:30 024 5e7fc700] [260a:4157205d] (N=12,name=strategy_proxy:role=proxy) 下线
+[2016-07-11 09:16:30 855 8fbe3700] ClearTimer Error: [0x00c9a647:0x4da6aa70] not found
+[2016-07-11 09:16:31 261 8fbe3700] ClearTimer Error: [0x00c9a648:0x4da6aa71] not found
+[2016-07-11 09:16:34 290 8fbe3700] ClearTimer Error: [0x00c9a646:0x4da6aa76] not found
+[2016-07-11 09:16:36 489 8fbe3700] ClearTimer Error: [0x00c9a645:0x4da6aa77] not found
+[2016-07-11 09:16:39 503 8fbe3700] ClearTimer Error: [0x00c9a647:0x4da6aa78] not found
+[2016-07-11 09:16:41 713 8fbe3700] ClearTimer Error: [0x00c9a648:0x4da6aa79] not found
+[2016-07-11 09:16:44 724 8fbe3700] ClearTimer Error: [0x00c9a646:0x4da6aa7a] not found
+[2016-07-11 09:16:46 918 8fbe3700] ClearTimer Error: [0x00c9a645:0x4da6aa7b] not found
+[2016-07-11 09:16:49 939 8fbe3700] ClearTimer Error: [0x00c9a647:0x4da6aa7c] not found
+[2016-07-11 09:16:52 141 8fbe3700] ClearTimer Error: [0x00c9a648:0x4da6aa7d] not found
+[2016-07-11 09:16:55 164 8fbe3700] ClearTimer Error: [0x00c9a646:0x4da6aa7e] not found
+[2016-07-11 09:16:57 356 8fbe3700] ClearTimer Error: [0x00c9a645:0x4da6aa7f] not found
+[2016-07-11 09:17:00 380 8fbe3700] ClearTimer Error: [0x00c9a647:0x4da6aa80] not found
+[2016-07-11 09:17:02 589 8fbe3700] ClearTimer Error: [0x00c9a648:0x4da6aa81] not found
+[2016-07-11 09:17:04 803 5e7fc700] [260a:4157205f] (N=12,name=strategy_proxy:role=proxy) 上线
+[2016-07-11 09:17:04 803 5e7fc700] strategy_proxy 订阅所有股票行情

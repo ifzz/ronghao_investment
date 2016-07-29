@@ -96,6 +96,9 @@ void data_manager::OnNotify(E15_ClientInfo * user,E15_ClientMsg * cmd,E15_String
 int data_manager::OnOpen(E15_ServerInfo * info,E15_String *& json) {
 	print_thread_safe(g_log, "[%x:%x] (N=%d, name=%s:role=%s) 上线\n", info->id.h, info->id.l,
 			info->N, info->name, info->role);
+	if (info->N == 0)
+		m_client_id = info->id;
+
 	if (!strcmp(info->role, MARKET_DATA_NODE) ||		//行情服务器
 			!strcmp(info->role, TRADE_SERVER_NODE) ||	//交易服务器
 			!strcmp(info->role, CLIENT_UI_NODE) ||			//前端界面
@@ -108,6 +111,7 @@ int data_manager::OnClose(E15_ServerInfo * info) {
 	print_thread_safe(g_log, "[%x:%x] (N=%d, name=%s:role=%s) 下线\n", info->id.h, info->id.l,
 			info->N, info->name, info->role);
 
+	m_role_id.erase(info->role);
 	return 1000;		//自动重联
 }
 
@@ -136,6 +140,8 @@ void data_manager::OnNotify(E15_ServerInfo * info,
 		E15_ServerRoute * rt,
 		E15_ServerCmd * cmd,
 		E15_String *& data) {
+	if (Stock_Msg_DiagramInfo == cmd->cmd)
+		m_dia_id = info->id;
 	m_data_mgr->data_dispatch(cmd->cmd, data);
 }
 #endif
@@ -168,7 +174,7 @@ int data_manager::request_subscribe_by_id(E15_StringArray& sa, int start, int en
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_SubscribeById;
-	return Request(&m_role_id[MARKET_DATA_NODE], 0, &cmd, &s);
+	return Request(&m_dia_id, 0, &cmd, &s);
 #endif
 }
 
@@ -187,7 +193,7 @@ int data_manager::request_unsubscribe_by_id(E15_StringArray& sa) {
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_UnSubscribeById;
-	return Request(&m_role_id[MARKET_DATA_NODE], 0, &cmd, &s);
+	return Request(&m_dia_id, 0, &cmd, &s);
 #endif
 }
 
@@ -206,7 +212,7 @@ int data_manager::request_subscribe_all(int start, int end, int interval) {
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_SubscribeAll;
-	return Request(&m_role_id[MARKET_DATA_NODE], 0, &cmd, &s);
+	return Request(&m_dia_id, 0, &cmd, &s);
 #endif
 }
 
@@ -224,7 +230,7 @@ int data_manager::request_unsubscribe_all() {
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_UnSubscribeAll;
-	return Request(&m_role_id[MARKET_DATA_NODE], 0, &cmd, 0);
+	return Request(&m_dia_id, 0, &cmd, 0);
 #endif
 }
 
@@ -249,6 +255,6 @@ void data_manager::send_instruction(const std::string& instrument_id, const orde
 	//给交易服务器发送请求交易的指令，不允许丢包，使用Request发送请求
 	Request(&m_role_id[TRADE_SERVER_NODE], 0, &cmd, &s);
 	//同时将交易指令推给前端界面，若系统无法及时处理，允许丢包
-	Notify(&m_role_id[CLIENT_UI_NODE], 0, &cmd, &s);
+	Notify(&m_client_id, 0, &cmd, &s);
 #endif
 }

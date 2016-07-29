@@ -13,10 +13,40 @@ ronghao_library/hh_server/.svn
 ronghao_library/stock_inc/.svn
 test_child/.svn
 
-ronghao_library/radar/log_files
-ronghao_library/DiagramServer/log_files
-ronghao_library/client_mgr/log_files
-ronghao_library/application/domain/log_files
-ronghao_library/hh_server/log_files
+./strategy_server/Debug/log_files
+./ronghao_library/radar/log_files
+./ronghao_library/DiagramServer/log_files
+./ronghao_library/client_mgr/log_files
+./ronghao_library/application/domain/log_files
+./ronghao_library/hh_server/log_files
+./test_child/Debug/log_files
+
+
+./ss_util/Debug/DiagramDataFactory.d
+./ss_util/Debug/data_mgr.d
+./ss_util/Debug/ss_util.d
+./strategy_server/Debug/data_manager.d
+./strategy_server/Debug/strategy_manager.d
+./test_child/Debug/test_child.d
+./strategy_library/sideways_false_breakthrough/Debug/sideways_false_breakthrough.d
+./strategy_library/strategy_demo1/Debug/strategy_demo1.d
+./strategy_library/strategy_demo4/Debug/strategy_demo4.d
+./strategy_library/strategy_demo2/Debug/strategy_demo2.d
+./strategy_library/libfive_minute_kline_1/Debug/five_minute_kline_1.d
+./strategy_library/strategy_demo3/Debug/strategy_demo3.d
+
+./ss_util/Debug/data_mgr.o
+./ss_util/Debug/DiagramDataFactory.o
+./ss_util/Debug/ss_util.o
+./strategy_server/Debug/strategy_manager.o
+./strategy_server/Debug/data_manager.o
+./test_child/Debug/test_child.o
+./strategy_library/sideways_false_breakthrough/Debug/sideways_false_breakthrough.o
+./strategy_library/strategy_demo1/Debug/strategy_demo1.o
+./strategy_library/strategy_demo4/Debug/strategy_demo4.o
+./strategy_library/strategy_demo2/Debug/strategy_demo2.o
+./strategy_library/libfive_minute_kline_1/Debug/five_minute_kline_1.o
+./strategy_library/strategy_demo3/Debug/strategy_demo3.o
+
 
 
