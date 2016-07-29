@@ -1,0 +1,120 @@
+[mate_list]
+	<mate>
+		name = md_ctp
+		role = md_server
+		group = ctp
+		number = 1
+		balance = 0
+	</mate>
+	<mate>
+		name = md_cna
+		role = md_server
+		group = cna
+		number = 2
+		balance = 0
+	</mate>
+	<mate>
+		name = data_001
+		role = data_factory
+		group = base
+		number = 6
+		balance = 0
+	</mate>
+	<mate>
+		name = uemgr
+		role = proxy
+		group = ue
+		number = 7
+		balance = 0
+	</mate>
+	<mate>
+		name = strategy_proxy
+		role = proxy
+		group = test
+		number = 12
+		balance = 0
+	</mate>
+	<mate>
+		name = store_dia
+		role = store
+		group = dia
+		number = 8
+		balance = 0
+	</mate>
+	<mate>
+		name = h001
+		role = history
+		group = test
+		number = 9
+		balance = 0
+	</mate>
+	<mate>
+		name = strategy
+		role = strategy
+		group = test
+		number = 10
+		balance = 0
+	</mate>
+	<mate>
+		name = strategy_01
+		role = strategy
+		group = test
+		number = 11
+		balance = 0
+	</mate>
+	<mate>
+		name = snatch_ctp
+		role = 
+		group = 
+		number = 3
+		balance = 0
+	</mate>
+[consort_list]
+	<consort>
+		master = data_001
+		slave = md_ctp
+	</consort>
+	<consort>
+		master = data_001
+		slave = md_cna
+	</consort>
+	<consort>
+		master = uemgr
+		slave = md_cna
+	</consort>
+	<consort>
+		master = uemgr
+		slave = md_ctp
+	</consort>
+	<consort>
+		master = data_001
+		slave = store_dia
+	</consort>
+	<consort>
+		master = strategy
+		slave = uemgr
+	</consort>
+	<consort>
+		master = strategy_01
+		slave = uemgr
+	</consort>
+	<consort>
+		master = uemgr
+		slave = data_001
+	</consort>
+	<consort>
+		master = md_cna
+		slave = strategy
+	</consort>
+	<consort>
+		master = data_001
+		slave = strategy
+	</consort>
+	<consort>
+		master = strategy_proxy
+		slave = data_001
+	</consort>
+	<consort>
+		master = strategy_proxy
+		slave = md_cna
+	</consort>

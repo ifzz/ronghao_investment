@@ -1,0 +1,56 @@
+[mate_list]
+	<mate>
+		name = md_ctp
+		role = md_server
+		group = ctp
+		number = 1
+		balance = 0
+	</mate>
+	<mate>
+		name = md_cna
+		role = md_server
+		group = cna
+		number = 2
+		balance = 0
+	</mate>
+	<mate>
+		name = snatch_ctp
+		role = snatch
+		group = test
+		number = 3
+		balance = 0
+	</mate>
+	<mate>
+		name = diagram001
+		role = data_factory
+		group = test
+		number = 6
+		balance = 0
+	</mate>
+	<mate>
+		name = uemgr
+		role = proxy
+		group = md
+		number = 7
+		balance = 0
+	</mate>
+	<mate>
+		name = h001
+		role = history
+		group = test
+		number = 9
+		balance = 0
+	</mate>
+[consort_list]
+	<consort>
+		master = diagram001
+		slave = md_ctp
+	</consort>
+	<consort>
+		master = diagram001
+		slave = md_cna
+	</consort>
+	<consort>
+		master = uemgr
+		slave = diagram001
+	</consort>

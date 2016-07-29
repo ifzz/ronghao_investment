@@ -1,0 +1,97 @@
+[mate_list]
+	<mate>
+		name = market_ctp
+		role = market_server
+		group = ctp
+		number = 1
+		balance = 0
+	</mate>
+	<mate>
+		name = md_cna
+		role = market_server
+		group = cna
+		number = 2
+		balance = 0
+	</mate>
+	<mate>
+		name = store_001
+		role = market_store
+		group = file
+		number = 3
+		balance = 0
+	</mate>
+	<mate>
+		name = ue001
+		role = ue_mgr
+		group = play_ue
+		number = 4
+		balance = 0
+	</mate>
+	<mate>
+		name = media001
+		role = video
+		group = 
+		number = 5
+		balance = 0
+	</mate>
+	<mate>
+		name = diagram001
+		role = diagram
+		group = test
+		number = 6
+		balance = 0
+	</mate>
+	<mate>
+		name = uemgr
+		role = forward
+		group = md
+		number = 7
+		balance = 0
+	</mate>
+	<mate>
+		name = store_dia
+		role = store
+		group = dia
+		number = 8
+		balance = 0
+	</mate>
+	<mate>
+		name = h001
+		role = history
+		group = test
+		number = 9
+		balance = 0
+	</mate>
+[consort_list]
+	<consort>
+		master = store_001
+		slave = market_ctp
+	</consort>
+	<consort>
+		master = diagram001
+		slave = market_ctp
+	</consort>
+	<consort>
+		master = diagram001
+		slave = md_cna
+	</consort>
+	<consort>
+		master = uemgr
+		slave = diagram001
+	</consort>
+	<consort>
+		master = uemgr
+		slave = md_cna
+	</consort>
+	<consort>
+		master = uemgr
+		slave = market_ctp
+	</consort>
+	<consort>
+		master = diagram001
+		slave = store_dia
+	</consort>
+	<consort>
+		master = store_001
+		slave = md_cna
+	</consort>
