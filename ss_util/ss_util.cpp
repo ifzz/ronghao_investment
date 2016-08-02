@@ -11,7 +11,7 @@ void log_handle::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 }
 
 void print_thread_safe(E15_Log& log, const char *format, ...) {
-	char log_buf[1024] = {0};
+	char log_buf[4096] = {0};
 	va_list args;
 	va_start(args, format);
 	vsprintf(log_buf, format, args);
@@ -51,9 +51,18 @@ void strategy_base::read_config(const char *config) {
 
 	ini.SetSection("share");
 	sb_impl *impl = static_cast<sb_impl*>(m_obj);
-	std::string ins_id = ini.ReadString("ins_id", "");		//获取关注的合约id
-	for (auto& id : crx::split(ins_id, ";"))
-		m_ins_info[id] = impl->m_mgr_ptr->get_ins_info(id);
+	int sub_all = 1;
+	ini.Read("sub_all", sub_all);
+
+	if (sub_all) {
+		impl->m_mgr_ptr->for_each_ins([&](const std::string& ins, const ContractInfo& info, void *args)->void {
+			m_ins_info[ins] = info;
+		}, nullptr);
+	} else {
+		std::string ins_id = ini.ReadString("ins_id", "");		//获取关注的合约id
+		for (auto& id : crx::split(ins_id, ";"))
+			m_ins_info[id] = impl->m_mgr_ptr->get_ins_info(id);
+	}
 
 	ini.SetSection("custom");
 	std::string diagram_type = ini.ReadString("diagram_type", "");		//关注的指标类型
@@ -88,7 +97,6 @@ void strategy_base::init() {
 	//记录该策略对应的全局配置信息
 	char strategy_config_buffer[1024] = {0};
 	std::string strategy_config;
-	auto ins = m_ins_info.begin();
 	sprintf(strategy_config_buffer, "\n###############################################################\n"
 			"当前正在运行的策略的全局信息如下："
 			"\n\t==>策略名称：%s，"
@@ -97,24 +105,15 @@ void strategy_base::init() {
 			"\n\t==>策略开发者：%s，"
 			"\n\t==>创建策略库的时间：%d，"
 			"\n\t==>策略配置名：%s，"
-			"\n\t==>策略备注：%s"
-			"\n\t==>当前这个策略主要关注的合约（id）包括：%s（%s）",
+			"\n\t==>策略备注：%s",
 				m_strategy_name.c_str(),
 				m_strategy_version.c_str(),
 				m_strategy_author.c_str(),
 				m_strategy_developer.c_str(),
 				m_strategy_time,
 				m_strategy_ini.c_str(),
-				m_strategy_comment.c_str(),
-				ins->first.c_str(),
-				GetMarketNameByCode(MarketCodeById(ins->first.c_str())));
+				m_strategy_comment.c_str());
 	strategy_config += strategy_config_buffer;
-
-	while (++ins != m_ins_info.end()) {		//记录所有的品种信息
-		sprintf(strategy_config_buffer, ", %s（%s）", ins->first.c_str(),
-				GetMarketNameByCode(MarketCodeById(ins->first.c_str())));
-		strategy_config += strategy_config_buffer;
-	}
 
 	auto type = m_type_map.begin();
 	if (type != m_type_map.end()) {
@@ -183,11 +182,9 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 		}
 	}
 
-	print_thread_safe("「触发交易请求」当前关注的合约：%s（%s），指标数据的类型：%s，包的序列号：%d，开平标志：%s，"
-			"交易方向：%s，信号等级：%d，行情数据的时间点：%d#%d，本地当前时间点：%d#%d，"
-			"采用的价格模型：%s#%d\n", ins_id.c_str(), GetMarketNameByCode(MarketCodeById(ins_id.c_str())),
-			diagram.c_str(), oi.seq, offset_flag.c_str(), trade_direction.c_str(), oi.level, oi.market.date, oi.market.time,
-			oi.current.date, oi.current.time, order_type.c_str(), oi.model.price);
+	print_thread_safe("本地%d#%d  %s  %s#%s  %s#%d  %s#%s  信号%d  行情%d#%d  %s#%d\n",
+			oi.current.date, oi.current.time, oi.stg_id, ins_id.c_str(), m_ins_info[ins_id].name, diagram.c_str(), oi.seq,
+			offset_flag.c_str(), trade_direction.c_str(), oi.level, oi.market.date, oi.market.time, order_type.c_str(), oi.model.price);
 
 	if (impl->m_current_date != oi.current.date) {		//每天新建一个文件，将当日所有下单记录保存在同一个文件中
 		if (impl->m_trade_import)		//首先将上一日的文件关闭
@@ -200,7 +197,7 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 	}
 
 	fprintf(impl->m_trade_import, "合约:%s[%s];指标:%s;序号:%d;开平:%s;方向:%s;信号:%d;行情时点:%d#%d;本地时点:%d#%d;"
-			"价格模型:%s#%d\n", ins_id.c_str(), GetMarketNameByCode(MarketCodeById(ins_id.c_str())),
+			"价格模型:%s#%lld\n", ins_id.c_str(), GetMarketNameByCode(MarketCodeById(ins_id.c_str())),
 			diagram.c_str(), oi.seq, offset_flag.c_str(), trade_direction.c_str(), oi.level, oi.market.date, oi.market.time,
 			oi.current.date, oi.current.time, order_type.c_str(), oi.model.price);
 }
@@ -233,6 +230,11 @@ void ss_util::global_log_destroy() {
 
 ContractInfo ss_util::get_ins_info(const std::string& id) {
 	return m_ins_info[id].detail;
+}
+
+void ss_util::for_each_ins(std::function<void(const std::string&, const ContractInfo&, void*)> f, void *args) {
+	for (auto& pair : m_ins_info)
+		f(pair.first, pair.second.detail, args);
 }
 
 datetime ss_util::get_current_datetime() {

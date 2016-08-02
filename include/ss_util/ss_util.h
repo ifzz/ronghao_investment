@@ -52,6 +52,7 @@ public:
 	virtual void destroy() {}
 
 	ContractInfo get_ins_info(const std::string& id);
+	void for_each_ins(std::function<void(const std::string&, const ContractInfo&, void*)> f, void *args);
 	datetime get_current_datetime();
 
 	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) = 0;

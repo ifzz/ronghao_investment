@@ -37,22 +37,29 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: history_md_server
+all: pre-build main-build
+
+# Main-build Target
+main-build: ../../runtime/history_md_server/history_md_server
 
 # Tool invocations
-history_md_server: $(OBJS) $(USER_OBJS)
+../../runtime/history_md_server/history_md_server: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic -L/home/daniel/workspace/ronghao_investment/ronghao_library/so -L/home/daniel/workspace/common_library/lib64 -o "history_md_server" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic -L/home/daniel/workspace/ronghao_investment/ronghao_library/so -L/home/daniel/workspace/ronghao_investment/runtime/so -o "../../runtime/history_md_server/history_md_server" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(CPP_DEPS)$(EXECUTABLES)$(CXX_DEPS)$(C_UPPER_DEPS) history_md_server
+	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(CPP_DEPS)$(EXECUTABLES)$(CXX_DEPS)$(C_UPPER_DEPS) ../../runtime/history_md_server/history_md_server
+	-@echo ' '
+
+pre-build:
+	-mkdir -p ../../runtime/history_md_server
 	-@echo ' '
 
 .PHONY: all clean dependents
-.SECONDARY:
+.SECONDARY: main-build pre-build
 
 -include ../makefile.targets

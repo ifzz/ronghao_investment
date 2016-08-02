@@ -33,7 +33,7 @@ public:
 	void terminate_connect();
 
 	int request_subscribe_by_id(E15_StringArray& sa, int start, int end, int interval);
-	int request_subscribe_all(int start, int end, int interval);
+	int request_subscribe_all();
 	int request_unsubscribe_by_id(E15_StringArray& sa);
 	int request_unsubscribe_all();
 
@@ -57,9 +57,6 @@ public:
 	virtual void OnResponse(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data) {}
 	virtual void OnNotify(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data);
 #endif
-
-private:
-	void insert_date_interval(E15_ValueTable& vt, unsigned int start, unsigned int end, unsigned int interval);
 
 private:
 	std::mutex m_mtx_for_trade_request;

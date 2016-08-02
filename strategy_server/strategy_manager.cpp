@@ -123,6 +123,7 @@ void strategy_manager::parse_ini() {
 	g_conf.passwd = ini.ReadString("password", "123456");
 
 	ini.SetSection("setting");
+	ini.Read("sub_all", g_conf.sub_all);
 	ini.Read("conn_real", g_conf.conn_real);
 	ini.Read("for_produce", g_conf.for_produce);
 }
@@ -147,14 +148,11 @@ void sig_child(int sig_no) {
 }
 
 bool strategy_manager::init(int argc, char *argv[]) {
-	if (access(STRATEGY_DIR, F_OK))
-		mkdir(STRATEGY_DIR, 0755);
 	if (access(DATABASE_IMPORT, F_OK))		//创建数据导入目录
 		mkdir(DATABASE_IMPORT, 0755);
 	if (access(FIFO_PREFIX, F_OK))
 		mkdir(FIFO_PREFIX, 0755);
 
-	signal(SIGPIPE, SIG_IGN);
 	signal(SIGCHLD, [](int sig_no)->void {
 		sig_child(sig_no);
 	});
@@ -184,16 +182,22 @@ void strategy_manager::destroy() {
 	for (auto& args : args_set)
 		unload_strategy(args);
 
+	if (g_conf.sub_all) {
+		m_data_recv->request_unsubscribe_all();
+		printf("已经退订所有合约!\n");
+	}
+
 	m_statis_stop = true;
 	m_statis_th.join();
 	m_data_recv->terminate_connect();
 	if (!g_conf.for_produce)		//回收接收交易数据的线
 		m_trade_th.stop();
 	m_threads.stop();
+	print_thread_safe(g_log, "[strategy_manager::destroy]中断与行情服务器的连接，释放服务申请的资源\n");
 
 	g_socket.Stop();
-	print_thread_safe(g_log, "[strategy_manager::destroy]中断与行情服务器的连接，释放服务申请的资源\n");
 	global_log_destroy();
+	remove(FIFO_PREFIX);
 }
 
 void strategy_manager::data_dispatch(int cmd, E15_String *&data) {
@@ -212,8 +216,35 @@ void strategy_manager::data_dispatch(int cmd, E15_String *&data) {
 		data = nullptr;
 		printf("strategy_manager[%d] 收到收到指标描述信息 bytes=%ld\n", getpid(), m_diagram_info->Length());
 
-		std::vector<std::string> args = {STRATEGY_DIR"libstrategy_demo3.so", STRATEGY_DIR"libstrategy_demo3.ini"};
-		load_strategy(args);
+		if (g_conf.sub_all) {
+			m_data_recv->request_subscribe_all();
+			printf("[stg %d]开始订阅所有合约\n", getpid());
+		}
+
+		std::map<std::string, std::list<std::string>> autol_stg;
+		crx::depth_first_traverse_dir("autol_stg", [&](const std::string& file_name, void *args)->void {
+			std::string prefix = file_name.substr(0, file_name.rfind("/"));
+			autol_stg[prefix].push_back(file_name);
+		}, nullptr);
+
+		for (auto& stg : autol_stg) {
+			std::string so;
+			for (auto it = stg.second.begin(); it != stg.second.end(); ++it) {
+				if (it->substr(it->rfind(".")) == ".so") {
+					so = *it;
+					stg.second.erase(it);
+					break;
+				}
+			}
+
+			for (auto& ini : stg.second) {
+				std::vector<std::string> args = {so, ini};
+				load_strategy(args);
+			}
+		}
+
+//		std::vector<std::string> args = {STRATEGY_DIR"libstrategy_demo3.so", STRATEGY_DIR"libstrategy_demo3.ini"};
+//		load_strategy(args);
 		break;
 	}
 
@@ -311,6 +342,46 @@ void strategy_manager::statis_thread(bool *want_to_stop) {
 	}
 }
 
+void strategy_manager::handle_ins_sub(std::shared_ptr<processor>& p, const std::string& c) {
+	E15_Ini ini;
+	ini.Read(c.c_str());
+	if (g_conf.sub_all) {		//如果已经设置订阅所有行情，则直接返回不再订阅指定合约
+		int sub_all = 0;
+		ini.SetSection("share");
+		ini.Read("sub_all", sub_all);
+		if (sub_all) {
+			for (auto& ins : m_ins_info)
+				p->register_type(ins.second.type);
+		} else {
+			const char *ins_id = ini.ReadString("ins_id", "");
+			for (auto& ins : crx::split(ins_id, ";"))
+				p->register_type(m_ins_info[ins].type);
+		}
+		return;
+	}
+
+	//在配置中存在关注的合约，若还没订阅则需要订阅
+	ini.SetSection("framework");
+	int start = -1, end = -1, interval = 500;
+	ini.Read("start_date", start);
+	ini.Read("end_date", end);
+	ini.Read("interval", interval);
+
+	ini.SetSection("share");
+	const char *ins_id = ini.ReadString("ins_id", "");
+	auto ins_vec = crx::split(ins_id, ";");
+	E15_StringArray sa;
+	for (auto& ins : ins_vec) {
+		if (!m_ins_info[ins].subscribe_cnt)
+			sa.Add(ins.data(), ins.size());
+		m_ins_info[ins].subscribe_cnt++;
+		p->register_type(m_ins_info[ins].type);
+	}
+	if (sa.Size())
+		m_data_recv->request_subscribe_by_id(sa, start, end, interval);
+	p->store_sub_ins(ins_vec);
+}
+
 void strategy_manager::load_strategy(const std::vector<std::string>& args) {
 	if (args.size() != 2)
 		return;
@@ -355,28 +426,7 @@ void strategy_manager::load_strategy(const std::vector<std::string>& args) {
 		return;
 	}
 	m_libraries[l].ini_map[c] = p;
-
-	E15_Ini ini;		//在配置中存在关注的合约，若还没订阅则需要订阅
-	ini.Read(c.c_str());
-	ini.SetSection("framework");
-	int start = -1, end = -1, interval = 500;
-	ini.Read("start_date", start);
-	ini.Read("end_date", end);
-	ini.Read("interval", interval);
-
-	ini.SetSection("share");
-	const char *ins_id = ini.ReadString("ins_id", "");
-	auto ins_vec = crx::split(ins_id, ";");
-	E15_StringArray sa;
-	for (auto& ins : ins_vec) {
-		if (!m_ins_info[ins].subscribe_cnt)
-			sa.Add(ins.data(), ins.size());
-		m_ins_info[ins].subscribe_cnt++;
-		p->register_type(m_ins_info[ins].type);
-	}
-	if (sa.Size())
-		m_data_recv->request_subscribe_by_id(sa, start, end, interval);
-	p->store_sub_ins(ins_vec);
+	handle_ins_sub(p, c);
 	m_threads.register_processor(p);
 }
 
@@ -402,6 +452,10 @@ void strategy_manager::unload_strategy(const std::vector<std::string>& args) {
 			pro->unload_so(m_libraries[l].handle);
 		m_libraries.erase(l);
 	}
+	print_thread_safe(g_log, "[strategy manager] unload strategy with library name `%s` successfully!\n", l.c_str());
+
+	if (g_conf.sub_all)
+		return;
 
 	E15_StringArray sa;
 	pro->for_each_ins([&](const std::string& ins, void *args)->void {
@@ -411,28 +465,29 @@ void strategy_manager::unload_strategy(const std::vector<std::string>& args) {
 	}, nullptr);
 	if (sa.Size())
 		m_data_recv->request_unsubscribe_by_id(sa);
-	print_thread_safe(g_log, "[strategy manager] unload strategy with library name `%s` successfully!\n", l.c_str());
 }
 
 void strategy_manager::show_strategy() {
 	int cnt = 1;
-	std::cout<<std::setw(8)<<"id"<<std::setw(48)<<"so"<<"ini"<<std::endl;
+	std::stringstream ss;
+	ss<<'\n'<<std::left<<std::setw(6)<<"id"<<std::setw(60)<<"so"<<"ini\n";
 	for (auto& l : m_libraries)
 		for (auto& c : l.second.ini_map)
-			std::cout<<std::setw(8)<<cnt++<<std::setw(48)<<l.first<<c.first<<std::endl;
-	std::cout<<std::endl;
+			ss<<std::left<<std::setw(6)<<cnt++<<std::setw(60)<<l.first<<c.first<<"\n\n";
+	std::cout<<ss.rdbuf();
+	std::cout.flush();
 }
 
 int main(int argc, char *argv[]) {
-	g_mgr.add_cmd("load", "l", [](const std::vector<std::string>& args, crx::console *c)->void {
+	g_mgr.add_cmd("load", "l", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.load_strategy(args);
 	}, "load specified library@usage: load(l) `library` `config`");
 
-	g_mgr.add_cmd("unload", "ul", [](const std::vector<std::string>& args, crx::console *c)->void {
+	g_mgr.add_cmd("unload", "ul", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.unload_strategy(args);
 	}, "unload specified library@usage: unload(ul) `strategy` `config`");
 
-	g_mgr.add_cmd("show", "s", [](const std::vector<std::string>& args, crx::console *c)->void {
+	g_mgr.add_cmd("show", "s", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.show_strategy();
 	}, "show strategies");
 	return g_mgr.run(argc, argv);

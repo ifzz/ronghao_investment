@@ -26,19 +26,19 @@ void file_receiver::OnResponed(const char * url, int status, E15_ValueTable *& h
 		return;
 	}
 
-	std::string file = url;
-	std::string local_file = STRATEGY_DIR+file.substr(file.rfind("/")+1);
-
-	FILE *p = fopen(local_file.c_str(), "w");
-	fputs(data->c_str(), p);
-	fclose(p);
-
-	if (std::string::npos != file.rfind(".ini")) {		//已同时取到so和ini文件
-		std::string so_file = m_ini_so[file];
-		so_file = STRATEGY_DIR+so_file.substr(so_file.rfind("/")+1);
-		std::vector<std::string> args = {so_file, local_file};
-		m_data_mgr->load_strategy(args);
-	}
+//	std::string file = url;
+//	std::string local_file = STRATEGY_DIR+file.substr(file.rfind("/")+1);
+//
+//	FILE *p = fopen(local_file.c_str(), "w");
+//	fputs(data->c_str(), p);
+//	fclose(p);
+//
+//	if (std::string::npos != file.rfind(".ini")) {		//已同时取到so和ini文件
+//		std::string so_file = m_ini_so[file];
+//		so_file = STRATEGY_DIR+so_file.substr(so_file.rfind("/")+1);
+//		std::vector<std::string> args = {so_file, local_file};
+//		m_data_mgr->load_strategy(args);
+//	}
 }
 
 data_manager::data_manager(strategy_manager *data_mgr)
@@ -124,10 +124,10 @@ void data_manager::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_Serv
 			break;
 		}
 		case OPERA_UNLOAD: {
-			auto args = crx::split(data->c_str(), " ");
-			std::string so = STRATEGY_DIR+args[0].substr(args[0].rfind("/")+1);
-			std::string ini = STRATEGY_DIR+args[1].substr(args[1].rfind("/")+1);
-			m_data_mgr->unload_strategy(std::vector<std::string>({so, ini}));
+//			auto args = crx::split(data->c_str(), " ");
+//			std::string so = STRATEGY_DIR+args[0].substr(args[0].rfind("/")+1);
+//			std::string ini = STRATEGY_DIR+args[1].substr(args[1].rfind("/")+1);
+//			m_data_mgr->unload_strategy(std::vector<std::string>({so, ini}));
 			break;
 		}
 		default:
@@ -150,17 +150,13 @@ void data_manager::load_strategy(const std::vector<std::string>& args) {
 	m_data_mgr->load_strategy(args);
 }
 
-void data_manager::insert_date_interval(E15_ValueTable& vt, unsigned int start, unsigned int end, unsigned int interval) {
-	vt.SetSI("start_date", start);
-	vt.SetSI("end_date", end);
-	vt.SetSI("interval", interval);
-}
-
 int data_manager::request_subscribe_by_id(E15_StringArray& sa, int start, int end, int interval) {
 	/* Construct Json string according to the `instrument_name` */
 	E15_ValueTable vt;
 	vt.InsertS("id_list")->SetStringArray(&sa);
-	insert_date_interval(vt, start, end, interval);
+	vt.SetSI("start_date", start);
+	vt.SetSI("end_date", end);
+	vt.SetSI("interval", interval);
 	vt.InsertS("conn_real")->SetUInt(g_conf.conn_real);
 
 	E15_String s;
@@ -197,9 +193,8 @@ int data_manager::request_unsubscribe_by_id(E15_StringArray& sa) {
 #endif
 }
 
-int data_manager::request_subscribe_all(int start, int end, int interval) {
+int data_manager::request_subscribe_all() {
 	E15_ValueTable vt;
-	insert_date_interval(vt, start, end, interval);
 	vt.InsertS("conn_real")->SetUInt(g_conf.conn_real);
 
 	E15_String s;
@@ -235,15 +230,10 @@ int data_manager::request_unsubscribe_all() {
 }
 
 void data_manager::send_instruction(const std::string& instrument_id, const order_instruction& instruction) {
-	E15_ValueTable vt;
-	E15_Value *v = vt.InsertS("ins_id");
-	v->SetString(instrument_id.c_str(), instrument_id.length());
-
-	v = vt.InsertS("instruction");
-	v->SetString((const char*)&instruction, sizeof(order_instruction));
-
 	E15_String s;
-	vt.Dump(&s);
+	s.Memcpy(instrument_id.c_str(), instrument_id.length());
+	s.Resize(16, 0);
+	s.Memcat((const char*)&instruction, sizeof(order_instruction));
 
 #ifdef RUN_AS_CLIENT
 	E15_ClientMsg msg;

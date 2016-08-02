@@ -26,7 +26,7 @@
 #define PRINT_SCREEN	true
 #define DEPTH_MARKET_HEAD_LEN 16
 
-#define FIFO_PREFIX	"./tmp_fifo/"
+#define FIFO_PREFIX	"./runtime_fifo/"
 #define DATABASE_IMPORT "./database_import/"
 
 using strategy_export = std::shared_ptr<strategy_base> (*)();

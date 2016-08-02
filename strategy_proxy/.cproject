@@ -14,7 +14,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.1959828723" name="Debug" parent="cdt.managedbuild.config.gnu.exe.debug">
+				<configuration artifactName="../../runtime/strategy_proxy/${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.1959828723" name="Debug" parent="cdt.managedbuild.config.gnu.exe.debug" prebuildStep="mkdir -p ../../runtime/strategy_proxy">
 					<folderInfo id="cdt.managedbuild.config.gnu.exe.debug.1959828723." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.exe.debug.1514361842" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.exe.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.exe.debug.1952769941" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.exe.debug"/>
@@ -39,7 +39,7 @@
 							<tool command="g++ -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.681061404" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 								<option id="gnu.cpp.link.option.paths.116558741" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/home/daniel/workspace/ronghao_investment/ronghao_library/so"/>
-									<listOptionValue builtIn="false" value="/home/daniel/workspace/common_library/lib64"/>
+									<listOptionValue builtIn="false" value="/home/daniel/workspace/ronghao_investment/runtime/so"/>
 								</option>
 								<option id="gnu.cpp.link.option.libs.914995977" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="E15_c_objectD"/>

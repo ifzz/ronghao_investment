@@ -2,13 +2,24 @@
 
 #include "strategy_base.h"
 
-typedef enum {
+enum K_AVERAGE_STATUS {
 	STATUS_INIT = 0,
 	STATUS_IN_OPEN_BUY,
 	STATUS_IN_CLOSE_BUY,
 	STATUS_IN_OPEN_SELL,
 	STATUS_IN_CLOSE_SELL,
-} K_AVERAGE_STATUS;
+} ;
+
+struct ins_data {
+	K_AVERAGE_STATUS m_status;
+	unsigned int m_seq;
+	bool m_five_greater_than_ten;
+
+	ins_data()
+	:m_status(STATUS_INIT)
+	,m_seq(0)
+	,m_five_greater_than_ten(false) {}
+};
 
 class five_minute_kline_1 : public strategy_base {
 public:
@@ -19,9 +30,9 @@ public:
 	virtual void execute(depth_dia_group& group);
 
 private:
-	K_AVERAGE_STATUS m_status;
-	unsigned int m_seq;
-	bool m_five_greater_than_ten;
+	void execute_trade(depth_dia_group& group, OFFSET_FLAG flag, TRADE_DIRECTION direction);
 
-	int32_t m_12Skline_index, m_5kavg_index, m_10kavg_index, m_60kavg_index;
+private:
+	int32_t m_12skline_index, m_5kavg_index, m_10kavg_index, m_60kavg_index;
+	std::map<std::string, ins_data> m_ins_data;
 };

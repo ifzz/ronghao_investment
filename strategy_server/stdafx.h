@@ -17,8 +17,6 @@
 #define TEST_INTERVAL 1000		//1s作一次统计
 #define THREADS_NUM 20
 
-#define FIFO_PREFIX	"./tmp_fifo/"
-#define STRATEGY_DIR "./strategy_so/"
 #define DATABASE_IMPORT "./database_import/"
 
 #include "rhafx.h"
@@ -31,6 +29,7 @@ struct config {
 	std::string user;
 	std::string passwd;
 
+	int sub_all;
 	int conn_real;
 	int for_produce;
 };

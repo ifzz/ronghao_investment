@@ -9,7 +9,7 @@ data_trans::data_trans(history_mgr *mgr_ptr)
 
 int data_trans::start() {
 	g_socket.Start();
-	Start(&g_socket, "/home/daniel/workspace/ronghao_investment/history_md_server/history.ini");
+	Start(&g_socket, "ini/server.ini");
 	return 1;
 }
 

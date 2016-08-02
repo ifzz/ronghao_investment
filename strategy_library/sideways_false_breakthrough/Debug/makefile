@@ -37,19 +37,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: libsideways_false_breakthrough.so
+all: ../../../runtime/strategy_server/stg_so/libsideways_false_breakthrough.so
 
 # Tool invocations
-libsideways_false_breakthrough.so: $(OBJS) $(USER_OBJS)
+../../../runtime/strategy_server/stg_so/libsideways_false_breakthrough.so: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -shared -o "libsideways_false_breakthrough.so" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -shared -o "../../../runtime/strategy_server/stg_so/libsideways_false_breakthrough.so" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(LIBRARIES)$(CPP_DEPS)$(CXX_DEPS)$(C_UPPER_DEPS) libsideways_false_breakthrough.so
+	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(LIBRARIES)$(CPP_DEPS)$(CXX_DEPS)$(C_UPPER_DEPS) ../../../runtime/strategy_server/stg_so/libsideways_false_breakthrough.so
 	-@echo ' '
 
 .PHONY: all clean dependents

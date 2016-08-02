@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <string.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -19,29 +20,26 @@ struct datetime {		//日期时间，需要将本地时间带给交易服务器
 
 struct price_model {
 	ORDER_TYPE type;
-	int price;
+	long long price;
 
 	price_model()
 	:type(ORDER_UNK)
-	,price(-1) {}
+	,price(0) {}
 };
 
 struct order_instruction {
-	datetime market;			//行情日期时间
-	datetime current;			//当前日期时间（**不用填）
+	char stg_id[16];			//策略id
+	char oi_id[16];			//交易流水号
 	TRADE_DIRECTION direction;		//买卖方向
 	OFFSET_FLAG flag;						//开平标志
-	price_model model;		//价格模型
+	price_model model;						//价格模型
+	long vol_cnt;				//手数
+
+	datetime market;			//行情日期时间
+	datetime current;			//当前日期时间（**不用填）
 	int level;		//强弱信号
 	int seq;			//K线的序列号
 	int type_index;				//指标数据类型
-
-	order_instruction()
-	:direction(DIRECTION_UNK)
-	,flag(FLAG_UNK)
-	,level(-1)
-	,seq(-1)
-	,type_index(-1) {}
 };
 
 struct dia_data_tag {

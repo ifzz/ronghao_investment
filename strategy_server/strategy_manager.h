@@ -87,6 +87,7 @@ public:
 
 private:
 	void parse_ini();
+	void handle_ins_sub(std::shared_ptr<processor>& p, const std::string& c);
 	static void for_trade(int fd, void *args);
 	static void statis_thread(bool *want_to_stop);
 
