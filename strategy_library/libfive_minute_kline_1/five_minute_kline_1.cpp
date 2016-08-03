@@ -26,19 +26,12 @@ void five_minute_kline_1::execute_trade(depth_dia_group& group, OFFSET_FLAG flag
  	market.date = k_line->close_item.date;
  	market.time = k_line->close_item.time;
 
- 	price_model model;
- 	model.type = ORDER_LIMIT;
- 	model.price = k_line->close_item.price;
-
  	order_instruction oi;
- 	size_t size = m_strategy_name.size() > 15 ? 15 : m_strategy_name.size();
- 	memcpy(oi.stg_id, m_strategy_name.c_str(), size);
- 	oi.stg_id[size] = '\0';
  	oi.type_index = m_12skline_index;
- 	oi.seq = group.diagrams[m_12skline_index].base->_seq;
+ 	oi.dia_seq = group.diagrams[m_12skline_index].base->_seq;
  	oi.level = 1;
  	oi.market = market;
- 	oi.model = model;
+ 	oi.price = k_line->close_item.price;
  	oi.flag = flag;
  	oi.direction = direction;
  	request_trade(group.ins_id, oi);

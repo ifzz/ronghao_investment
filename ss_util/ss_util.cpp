@@ -1,7 +1,8 @@
 #include "rhafx.h"
 
-crx::evd_thread_pool g_log_th(1);
+crx::evd_thread_pool g_log_th;
 std::shared_ptr<log_handle> g_log_hd;
+config g_conf;
 
 void log_handle::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 	auto j = std::dynamic_pointer_cast<log_job>(job);
@@ -146,15 +147,6 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 	 * 		就可以了，可以选择在策略加载时进行打印）、合约ID、哪一类type index的diagram data
 	 *
 	 */
-	std::string order_type;
-	if (ORDER_LIMIT == oi.model.type)
-		order_type = "限价单";
-	else if (ORDER_MARKET == oi.model.type)
-		order_type = "市价单";
-	else if (ORDER_LISTPRICE == oi.model.type)
-		order_type = "对价单";
-	else
-		order_type = "未知类型的订单";
 
 	std::string offset_flag;
 	if (FLAG_OPEN == oi.flag)
@@ -173,18 +165,18 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 		trade_direction = "买卖方向未知";
 
 	std::string diagram = "深度行情";
-	char buffer[8];
 	for (unsigned int i = 0; i < g_data_tag_info.m_list->Count(); ++i) {
 		DataDescription *data_desc = (DataDescription*)g_data_tag_info.m_list->At(i, 0);
-		if ((unsigned int)oi.type_index == data_desc->m_dt.type_index) {
-			sprintf(buffer, "%ld", data_desc->m_dt.param);
-			diagram = std::string(buffer)+data_desc->m_dt.name+data_desc->m_dt.class_name;
-		}
+		if ((unsigned int)oi.type_index == data_desc->m_dt.type_index)
+			diagram = std::to_string(data_desc->m_dt.param)+data_desc->m_dt.name+data_desc->m_dt.class_name;
 	}
 
-	print_thread_safe("本地%d#%d  %s  %s#%s  %s#%d  %s#%s  信号%d  行情%d#%d  %s#%d\n",
-			oi.current.date, oi.current.time, oi.stg_id, ins_id.c_str(), m_ins_info[ins_id].name, diagram.c_str(), oi.seq,
-			offset_flag.c_str(), trade_direction.c_str(), oi.level, oi.market.date, oi.market.time, order_type.c_str(), oi.model.price);
+	char buf[128] = {0};
+	//本地日期#时间 策略id 下单源id 交易流水号 合约id 指标类型#指标流水号 开平#交易方向 价格#手数#信号 行情日期#时间
+	sprintf(buf, "本地%d#%d %d %d %d  %s  %s#%d  %s#%s  %lld#%d#%d  行情%d#%d\n",
+			oi.current.date, oi.current.time, oi.strategy_id, oi.src, oi.trade_seq, ins_id.c_str(), diagram.c_str(), oi.dia_seq,
+			offset_flag.c_str(), trade_direction.c_str(), oi.price, oi.vol_cnt, oi.level, oi.market.date, oi.market.time);
+	print_thread_safe("%s", buf);
 
 	if (impl->m_current_date != oi.current.date) {		//每天新建一个文件，将当日所有下单记录保存在同一个文件中
 		if (impl->m_trade_import)		//首先将上一日的文件关闭
@@ -192,14 +184,10 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 
 		impl->m_current_date = oi.current.date;
 		char file[256] = {0};
-		sprintf(file, DATABASE_IMPORT"%s-%d.log", m_strategy_name.c_str(), impl->m_current_date);
+		sprintf(file, "%s/%s-%d.log", g_conf.db_import.c_str(), m_strategy_name.c_str(), impl->m_current_date);
 		impl->m_trade_import = fopen(file, "w");		//再新开一个文件存储
 	}
-
-	fprintf(impl->m_trade_import, "合约:%s[%s];指标:%s;序号:%d;开平:%s;方向:%s;信号:%d;行情时点:%d#%d;本地时点:%d#%d;"
-			"价格模型:%s#%lld\n", ins_id.c_str(), GetMarketNameByCode(MarketCodeById(ins_id.c_str())),
-			diagram.c_str(), oi.seq, offset_flag.c_str(), trade_direction.c_str(), oi.level, oi.market.date, oi.market.time,
-			oi.current.date, oi.current.time, order_type.c_str(), oi.model.price);
+	fprintf(impl->m_trade_import, "%s", buf);
 }
 
 ss_util::ss_util()
@@ -213,12 +201,32 @@ ss_util::~ss_util() {
 		delete m_diagram_info;
 }
 
+void ss_util::parse_ini() {
+	E15_Ini ini;
+	ini.Read("ini/config.ini");
+	ini.SetSection("client");
+	g_conf.ip = ini.ReadString("addr", "127.0.0.1");
+	ini.Read("port", g_conf.port);
+	g_conf.user = ini.ReadString("user", "test");
+	g_conf.passwd = ini.ReadString("password", "123456");
+
+	ini.SetSection("setting");
+	ini.Read("sub_all", g_conf.sub_all);
+	ini.Read("conn_real", g_conf.conn_real);
+	ini.Read("for_produce", g_conf.for_produce);
+	ini.Read("threads_num", g_conf.threads_num);
+	g_conf.stg_dir = ini.ReadString("stg_dir", "");
+	g_conf.db_import = ini.ReadString("db_import", "");
+	if (access(g_conf.db_import.c_str(), F_OK))		//创建数据导入目录
+		mkdir(g_conf.db_import.c_str(), 0755);
+}
+
 void ss_util::global_log_init() {
 	//全局日志初始化
 	g_log_hd = std::make_shared<log_handle>();
 	g_log_hd->register_type(1);
 
-	g_log_th.start();
+	g_log_th.start(1);
 	g_log_th.register_processor(g_log_hd);
 }
 

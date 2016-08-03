@@ -14,28 +14,11 @@
 #define FILE_SERVER_IP			"127.0.0.1"
 #define FILE_SERVER_PORT		10000
 
-#define TEST_INTERVAL 1000		//1s作一次统计
-#define THREADS_NUM 20
-
-#define DATABASE_IMPORT "./database_import/"
-
 #include "rhafx.h"
 #include "data_manager.h"
 #include "strategy_manager.h"
 
-struct config {
-	std::string ip;
-	int port;
-	std::string user;
-	std::string passwd;
-
-	int sub_all;
-	int conn_real;
-	int for_produce;
-};
-
 extern E15_Log g_log;
 extern E15_Socket g_socket;
-extern config g_conf;
 
 #endif		//STDAFX_H_

@@ -33,11 +33,10 @@ void processor::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 	m_strategy->execute(j->group);
 }
 
-strategy_manager::strategy_manager(int argc, char *argv[])
-:m_thread(1) {
+strategy_manager::strategy_manager(int argc, char *argv[]) {
 	global_log_init();
 	m_eth.start();
-	m_thread.start();
+	m_thread.start(1);
 
 	m_processor = std::make_shared<processor>(this);
 	m_processor->register_type(1);
@@ -114,6 +113,7 @@ void strategy_manager::data_dispatch(int cmd, const char *data, size_t len) {
 
 //在策略执行过程中会触发请求交易的信号，这里的操作只是简单的将交易数据转发给框架
 void strategy_manager::send_instruction(const std::string& ins_id, order_instruction& oi) {
+	oi.trade_seq = m_seq++;
 	m_seria.insert("ins_id", ins_id.c_str(), ins_id.length());
 	m_seria.insert("oi", (const char*)&oi, sizeof(order_instruction));
 	m_seria.write(m_write_fifo);

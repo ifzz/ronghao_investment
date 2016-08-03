@@ -229,11 +229,32 @@ int data_manager::request_unsubscribe_all() {
 #endif
 }
 
-void data_manager::send_instruction(const std::string& instrument_id, const order_instruction& instruction) {
-	E15_String s;
-	s.Memcpy(instrument_id.c_str(), instrument_id.length());
-	s.Resize(16, 0);
-	s.Memcat((const char*)&instruction, sizeof(order_instruction));
+void data_manager::send_instruction(const std::string& ins_id, const order_instruction& oi) {
+	E15_String s_trade, s_ui;
+	s_ui.Memcpy(ins_id.c_str(), ins_id.size());
+	s_ui.Resize(16, 0);
+	s_ui.Memcat((const char*)&oi, sizeof(order_instruction));
+
+	TradeTaskRequest req;
+	memset(&req, 0, sizeof(req));
+	memcpy(req.Instrument, ins_id.c_str(), ins_id.size());
+	req.req_id.date = oi.current.date;
+	req.req_id.time = oi.current.time;
+	req.req_id.strategy_id = oi.strategy_id;
+	req.req_id.src = oi.src;
+	req.req_id.seq = oi.trade_seq;
+	req.price = oi.price*10000;
+	req.volume = oi.vol_cnt;
+	if (DIRECTION_BUY == oi.direction)
+		req.Direct = 1;
+	else if (DIRECTION_SELL == oi.direction)
+		req.Direct = -1;
+	if (FLAG_OPEN == oi.flag)
+		req.open_close = 1;
+	else if (FLAG_CLOSE == oi.flag)
+		req.open_close = 0;
+	req.level = oi.level;
+	s_trade.Memcpy((const char*)&req, sizeof(TradeTaskRequest));
 
 #ifdef RUN_AS_CLIENT
 	E15_ClientMsg msg;
@@ -243,8 +264,8 @@ void data_manager::send_instruction(const std::string& instrument_id, const orde
 	E15_ServerCmd cmd;
 	cmd.cmd = TRADE_MSG_INPUT_ORDER;
 	//给交易服务器发送请求交易的指令，不允许丢包，使用Request发送请求
-	Request(&m_role_id[TRADE_SERVER_NODE], 0, &cmd, &s);
+	Request(&m_role_id[TRADE_SERVER_NODE], 0, &cmd, &s_trade);
 	//同时将交易指令推给前端界面，若系统无法及时处理，允许丢包
-	Notify(&m_client_id, 0, &cmd, &s);
+	Notify(&m_client_id, 0, &cmd, &s_ui);
 #endif
 }

@@ -227,6 +227,43 @@ typedef struct DepthExtFileHead
 	char reserve[8];
 }DepthExtFileHead;
 
+typedef struct TradeUUID
+{
+	union
+	{
+		struct
+		{
+			unsigned int 		date;	//yyyymmdd
+			unsigned int 		time;	//hhmissmss
+		};
+		long long day_time;
+	};
+	union
+	{
+		struct
+		{
+			unsigned int 		strategy_id;
+			unsigned short 	src;	//下单源的编号,下单源65536个，目前足够
+			unsigned short 	seq;	//流水号，同1毫秒内的交易区分
+		};
+		long long strategy;
+	};
+}TradeUUID;
+
+
+typedef struct TradeTaskRequest
+{
+	char 					Instrument[16];	//合约ID
+	TradeUUID			req_id;	//任务请求ID
+	long long 		price;	//价格 *10000
+	//以下参数在平仓时不需要
+	unsigned int volume;	//数量
+	char		Direct;				//方向 >0 买 <0 卖
+	char		open_close;		//开平仓类型，已经在消息中体现，可以不先要 1开 0平
+	char		level;		//信号强弱，反应开仓量
+}TradeTaskRequest;
+
+
 #pragma pack()
 
 
@@ -240,6 +277,8 @@ struct  MarketDataType
 	const char *  class_name;	//处理器,如k线
 	short				  store_level; //存储周期级别，0按天，1按年,通过配置文件来配,默认按天,tag未配置情况下以其主数据周期为准
 };
+
+
 
 
 

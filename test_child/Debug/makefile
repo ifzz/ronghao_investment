@@ -43,7 +43,7 @@ all: ../../runtime/strategy_server/test_child
 ../../runtime/strategy_server/test_child: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -Wl,-rpath=. -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic -L/home/daniel/workspace/ronghao_investment/ronghao_library/so -L/home/daniel/workspace/ronghao_investment/runtime/so -L/home/daniel/workspace/common_library/lib64 -o "../../runtime/strategy_server/test_child" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -Wl,-rpath=. -Wl,-rpath=../so -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic -L/home/daniel/workspace/ronghao_investment/ronghao_library/so -L/home/daniel/workspace/ronghao_investment/runtime/so -L/home/daniel/workspace/common_library/lib64 -o "../../runtime/strategy_server/test_child" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

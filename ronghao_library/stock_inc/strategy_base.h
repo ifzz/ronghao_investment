@@ -28,18 +28,21 @@ struct price_model {
 };
 
 struct order_instruction {
-	char stg_id[16];			//策略id
-	char oi_id[16];			//交易流水号
-	TRADE_DIRECTION direction;		//买卖方向
-	OFFSET_FLAG flag;						//开平标志
-	price_model model;						//价格模型
-	long vol_cnt;				//手数
+	datetime current;			//当前日期时间（**不用填）
+	unsigned int strategy_id;			//策略id（**不用填）
+	unsigned short src;		//下单源(策略服务器)id（**不用填）
+	unsigned short trade_seq;		//交易流水号（**不用填）
 
 	datetime market;			//行情日期时间
-	datetime current;			//当前日期时间（**不用填）
-	int level;		//强弱信号
-	int seq;			//K线的序列号
-	int type_index;				//指标数据类型
+	TRADE_DIRECTION direction;		//买卖方向
+	OFFSET_FLAG flag;						//开平标志
+	long long price;		//价格
+
+	unsigned int vol_cnt;				//手数
+	char level;		//强弱信号
+
+	int type_index;				//指标类型，前端画买卖点需要用到的数据
+	int dia_seq;			//指标流水号
 };
 
 struct dia_data_tag {

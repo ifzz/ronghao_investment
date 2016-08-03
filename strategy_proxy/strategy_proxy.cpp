@@ -9,8 +9,7 @@ E15_Socket g_socket;
 
 void trans::start() {
 	crx::xml_parser xml;
-	xml.load("ini/config.xml");
-	xml.find_child("config");
+	xml.load("ini/config.xml", "config");
 	xml.for_each_child([&](const char *name, const char *value, std::map<std::string, const char*>& attr, void*)->void {
 		if (!strncmp("role", name, strlen(name))) {
 			m_role.real_md = attr["real_md"];

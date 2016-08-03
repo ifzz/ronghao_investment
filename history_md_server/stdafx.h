@@ -4,7 +4,6 @@
 //////////////////////////////////////////////////////////////////////////
 //standard/system library macro define
 #define PRINT_SCREEN true
-#define THREAD_NUM 10
 
 #define STRATEGY_NODE "strategy"		//策略服务器节点
 #define MARKET_DATA_NODE	"data_factory"		//行情数据节点

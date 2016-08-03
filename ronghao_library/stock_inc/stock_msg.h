@@ -50,6 +50,9 @@ enum Trade_Msg
 	Trade_Msg_SnatchOver, 		//抢单完成
 	Trade_Msg_ShowTime,
 
+	Trade_Msg_StrategeOpen,			//程序化策率开仓
+	Trade_Msg_StrategeClose,		//程序化策率平仓
+	Trade_Msg_StrategeForceClose,	//程序化强制平仓，用于风控
 
 	Trade_Msg_Max
 };

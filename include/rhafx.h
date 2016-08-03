@@ -25,8 +25,23 @@
 
 #define PRINT_SCREEN	true
 #define DEPTH_MARKET_HEAD_LEN 16
-
 #define FIFO_PREFIX	"./runtime_fifo/"
-#define DATABASE_IMPORT "./database_import/"
+
+struct config {
+	std::string ip;
+	int port;
+	std::string user;
+	std::string passwd;
+
+	int sub_all;
+	int conn_real;
+	int for_produce;
+
+	int threads_num;
+	std::string db_import;
+	std::string stg_dir;
+};
+
+extern config g_conf;
 
 using strategy_export = std::shared_ptr<strategy_base> (*)();

@@ -37,6 +37,9 @@ public:
 	virtual void process_task(std::shared_ptr<crx::evd_thread_job> job);
 
 private:
+	std::string create_pipe(const std::string& l, const std::string& c);
+
+private:
 	void *m_handle;
 	pid_t m_spid;
 	strategy_manager *m_mgr_ptr;
@@ -63,8 +66,7 @@ struct library_info {
 class strategy_manager : public ss_util {
 public:
 	strategy_manager()
-	:m_threads(THREADS_NUM)
-	,m_statis_stop(false) {
+	:m_statis_stop(false) {
 		m_data_recv = new data_manager(this);
 	}
 	virtual ~strategy_manager() { delete m_data_recv; }
@@ -77,21 +79,36 @@ public:
 	virtual bool init(int argc, char *argv[]);
 	virtual void destroy();
 	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) {
+		if (g_conf.for_produce)
+			oi.trade_seq = m_seq++;
 		m_data_recv->send_instruction(ins_id, oi);
 	}
 
 	void child_crash(pid_t pid);
-	void show_strategy();
+	void flush();
+	void show_all();
+	void show_run();
 	void register_rfifo(int fd);
 	void unregister_rfifo(int fd);
 
 private:
-	void parse_ini();
-	void handle_ins_sub(std::shared_ptr<processor>& p, const std::string& c);
+	void auto_load_stg();
+	std::set<std::string> get_stg_dir();
+	void print_stg(const std::set<std::string>& dir_set);
+	bool parse_stg_dir(const std::string& stg_dir, std::string& l, std::string& c);
+
+	std::shared_ptr<processor> create_processor(const std::string& l, const std::string& c);
+	std::shared_ptr<processor> destroy_processor(const std::string& l, const std::string& c);
+	void handle_all_sub(std::shared_ptr<processor>& p, const std::string& c);
+	void handle_cus_sub(std::shared_ptr<processor>& p, const std::string& c);
+	void handle_ins_unsub(std::shared_ptr<processor>& pro);
+
 	static void for_trade(int fd, void *args);
 	static void statis_thread(bool *want_to_stop);
 
 private:
+	std::atomic<unsigned short> m_seq;
+	crx::xml_parser m_xml;
 	data_manager *m_data_recv;
 	crx::epoll_thread m_trade_th;
 	crx::evd_thread_pool m_threads;

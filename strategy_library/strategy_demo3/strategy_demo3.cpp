@@ -14,21 +14,14 @@ void strategy_demo3::execute_trade(depth_dia_group& group, TRADE_DIRECTION direc
 	market.date = group.depth->base.nTradeDay;
 	market.time = group.depth->base.nTime;
 
-	price_model model;
-	model.type = ORDER_LIMIT;
-	model.price = price;
-
  	order_instruction oi;
- 	size_t size = m_strategy_name.size() > 15 ? 15 : m_strategy_name.size();
- 	memcpy(oi.stg_id, m_strategy_name.c_str(), size);
- 	oi.stg_id[size] = '\0';
  	oi.type_index = m_12skline_index;
- 	oi.seq = group.diagrams[m_12skline_index].base->_seq;
+ 	oi.dia_seq = group.diagrams[m_12skline_index].base->_seq;
  	oi.flag = FLAG_OPEN;
  	oi.direction = direction;
  	oi.level = 1;
  	oi.market = market;
- 	oi.model = model;
+ 	oi.price = price;
  	request_trade(group.ins_id, oi);
 }
 

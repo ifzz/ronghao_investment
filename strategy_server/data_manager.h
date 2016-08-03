@@ -37,7 +37,7 @@ public:
 	int request_unsubscribe_by_id(E15_StringArray& sa);
 	int request_unsubscribe_all();
 
-	void send_instruction(const std::string& instrument_id, const order_instruction& instruction);
+	void send_instruction(const std::string& ins_id, const order_instruction& oi);
 	void load_strategy(const std::vector<std::string>& args);
 
 public:

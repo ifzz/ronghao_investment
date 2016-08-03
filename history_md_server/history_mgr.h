@@ -46,7 +46,7 @@ struct ins_info {
  */
 class history_mgr : public crx::console {
 public:
-	history_mgr();
+	history_mgr() { m_trans = std::make_shared<data_trans>(this); }
 	virtual ~history_mgr() {}
 
 public:

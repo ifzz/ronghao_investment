@@ -76,18 +76,13 @@ int data_parser::get_depth(void * obj,int market,const char * id,
 	return 1;
 }
 
-history_mgr::history_mgr()
-:m_thread_pool(THREAD_NUM) {
-	m_trans = std::make_shared<data_trans>(this);
-}
-
 bool history_mgr::init(int argc, char *argv[]) {
 	//全局日志初始化
 	g_log.Init("history_md", 100);
 	print_thread_safe("[%s#%s]Complete the initialization of the global log object……\n", __FILE__, __FUNCTION__);
 
 	m_timer_th.start();
-	m_thread_pool.start();
+	m_thread_pool.start(10);
 	m_trans->start();
 	m_history_store = Create_E15_HistoryStore();
 	return true;

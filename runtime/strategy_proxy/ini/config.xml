@@ -7,5 +7,6 @@
 		trade = "trade"
 		ui = ""
 		ope_mgr = ""
-	/>
+	>
+	</role>
 </config>

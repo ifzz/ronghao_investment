@@ -39,6 +39,7 @@ private:
 	static void feed_data(int fd, void *arg);
 
 private:
+	std::atomic<unsigned short> m_seq;
 	crx::seria m_seria;
 	crx::deseria m_deseria;
 	crx::epoll_thread m_eth;

@@ -46,7 +46,7 @@ main-build: ../../runtime/strategy_server/strategy_server
 ../../runtime/strategy_server/strategy_server: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -Wl,-rpath=. -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic -L/home/daniel/workspace/ronghao_investment/ronghao_library/so -L/home/daniel/workspace/ronghao_investment/runtime/so -o "../../runtime/strategy_server/strategy_server" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -Wl,-rpath=. -Wl,-rpath=../so -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic -L/home/daniel/workspace/ronghao_investment/ronghao_library/so -L/home/daniel/workspace/ronghao_investment/runtime/so -o "../../runtime/strategy_server/strategy_server" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

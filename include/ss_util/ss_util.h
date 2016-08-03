@@ -58,6 +58,7 @@ public:
 	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) = 0;
 
 protected:
+	void parse_ini();
 	void global_log_init();
 	void global_log_destroy();
 
@@ -77,8 +78,6 @@ protected:
 	E15_Zip m_unzip;
 	E15_String m_unzip_buffer;
 	E15_ValueTable m_vt;
-
-	std::vector<char> m_pipe_buf;
 };
 
 void print_thread_safe(E15_Log& log, const char *format, ...);
