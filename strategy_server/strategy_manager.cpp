@@ -156,6 +156,7 @@ bool strategy_manager::init(int argc, char *argv[]) {
 
 void strategy_manager::destroy() {
 	//首先卸载所有的策略
+	flush();
 	std::vector<std::string> dir_vec;
 	m_xml.for_each_attr([&](const char *name, const char *value, void *args)->void {
 		if (atoi(value)) {
@@ -190,6 +191,7 @@ void strategy_manager::auto_load_stg() {
 			str_vec.push_back(name);
 			load_strategy(str_vec);
 			str_vec.clear();
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		}
 	}, nullptr);
 }
