@@ -36,7 +36,7 @@
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.2039931792" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1317208416" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug"/>
-							<tool command="g++ -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.681061404" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
+							<tool command="g++ -Wl,-rpath=../so -Wl,-rpath=/home/daniel/workspace/ronghao_investment/ronghao_library/so -rdynamic" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.681061404" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 								<option id="gnu.cpp.link.option.paths.116558741" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/home/daniel/workspace/ronghao_investment/ronghao_library/so"/>
 									<listOptionValue builtIn="false" value="/home/daniel/workspace/ronghao_investment/runtime/so"/>

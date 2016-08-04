@@ -21,7 +21,10 @@ ronghao_library/DiagramServer/log_files
 ronghao_library/client_mgr/log_files
 ronghao_library/application/domain/log_files
 ronghao_library/hh_server/log_files
+
 runtime/strategy_server/log_files/
+runtime/history_md_server/log_files/
+runtime/strategy_proxy/log_files/
 
 ss_util/Debug/DiagramDataFactory.d
 ss_util/Debug/data_mgr.d
