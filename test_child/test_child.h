@@ -1,6 +1,8 @@
 #pragma once
 #include "rhafx.h"
 
+void print_thread_safe(E15_Log& log, const char *format, ...);
+
 class strategy_job : public crx::evd_thread_job {
 public:
 	strategy_job(int64_t type) : crx::evd_thread_job(type) {}
@@ -18,7 +20,7 @@ public:
 			dlclose(m_handle);
 	}
 
-	bool load(const char *library, const char *config);
+	bool load(const char *library, const char *config, uint32_t stg_id, uint16_t src_id);
 	virtual void process_task(std::shared_ptr<crx::evd_thread_job> job);
 
 private:

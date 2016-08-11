@@ -19,6 +19,7 @@ struct ins_data {
 	STRATEGY_STATUS m_sts;
 	int64_t m_last_amplitude;
 	KLINE m_last_k_line;
+	TradeUUID uuid;
 
 	ins_data()
 	:m_sts(STATUS_INIT)
@@ -37,7 +38,8 @@ public:
 	virtual void execute(depth_dia_group& group);
 
 private:
-	void execute_trade(depth_dia_group& group, OFFSET_FLAG flag, TRADE_DIRECTION direction);
+	void go(const std::string& ins_id, MarketDepthData *depth, dia_group& dia);
+	void execute_trade(const std::string& ins_id, MarketDepthData *depth, dia_group& dia, OFFSET_FLAG flag, TRADE_DIRECTION direction);
 
 private:
 	int32_t m_1minkline_index;

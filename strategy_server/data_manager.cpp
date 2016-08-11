@@ -1,8 +1,9 @@
-#include "stdafx.h"
+#include "data_manager.h"
+#include "strategy_manager.h"
 
 int file_receiver::connect_file_server() {
 	Init(&g_socket);
-	int ret_code = Connect(FILE_SERVER_IP, FILE_SERVER_PORT);
+	int ret_code = Connect(g_conf.so_addr.c_str(), g_conf.so_port);
 	print_thread_safe(g_log, "成功启动本地http客户端用于接收远程策略so以及ini\n");
 	return ret_code;
 }
@@ -96,14 +97,17 @@ void data_manager::OnNotify(E15_ClientInfo * user,E15_ClientMsg * cmd,E15_String
 int data_manager::OnOpen(E15_ServerInfo * info,E15_String *& json) {
 	print_thread_safe(g_log, "[%x:%x] (N=%d, name=%s:role=%s) 上线\n", info->id.h, info->id.l,
 			info->N, info->name, info->role);
-	if (info->N == 0)
-		m_client_id = info->id;
-
-	if (!strcmp(info->role, MARKET_DATA_NODE) ||		//行情服务器
-			!strcmp(info->role, TRADE_SERVER_NODE) ||	//交易服务器
-			!strcmp(info->role, CLIENT_UI_NODE) ||			//前端界面
-			!strcmp(info->role, OPE_MANAGER_NODE))		//运维管理
-		m_role_id[info->role] = info->id;
+	if (info->N == 0) {
+		for (auto& id : m_client_id)
+			if (id == info->id)
+				return 0;
+		m_client_id.push_back(info->id);
+	} else {
+		for (auto& id : m_server_id[info->role])
+			if (id == info->id)
+				return 0;
+		m_server_id[info->role].push_back(info->id);
+	}
 	return 0;
 }
 
@@ -111,28 +115,27 @@ int data_manager::OnClose(E15_ServerInfo * info) {
 	print_thread_safe(g_log, "[%x:%x] (N=%d, name=%s:role=%s) 下线\n", info->id.h, info->id.l,
 			info->N, info->name, info->role);
 
-	m_role_id.erase(info->role);
+	if (info->N == 0)
+		m_client_id.remove(info->id);
+	else
+		m_server_id[info->role].remove(info->id);
 	return 1000;		//自动重联
 }
 
 void data_manager::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data) {
-	if (m_role_id[OPE_MANAGER_NODE] == info->id) {		//接到的是后台运维节点的命令，由运维控制策略的加载及卸载
-		switch (cmd->cmd) {
-		case OPERA_LOAD: {
-			//总是从文件服务器中取so，保证每次执行的都是最新的
-			m_file_receiver->request_file_by_url(data->c_str());		//so
-			break;
-		}
-		case OPERA_UNLOAD: {
+	switch (cmd->cmd) {
+	case OPERA_LOAD: {
+		//总是从文件服务器中取so，保证每次执行的都是最新的
+		m_file_receiver->request_file_by_url(data->c_str());		//so
+		break;
+	}
+	case OPERA_UNLOAD: {
 //			auto args = crx::split(data->c_str(), " ");
 //			std::string so = STRATEGY_DIR+args[0].substr(args[0].rfind("/")+1);
 //			std::string ini = STRATEGY_DIR+args[1].substr(args[1].rfind("/")+1);
 //			m_data_mgr->unload_strategy(std::vector<std::string>({so, ini}));
-			break;
-		}
-		default:
-			break;
-		}
+		break;
+	}
 	}
 }
 
@@ -140,8 +143,9 @@ void data_manager::OnNotify(E15_ServerInfo * info,
 		E15_ServerRoute * rt,
 		E15_ServerCmd * cmd,
 		E15_String *& data) {
-	if (Stock_Msg_DiagramInfo == cmd->cmd)
-		m_dia_id = info->id;
+	if (m_data_mgr->m_test_exist_data)
+		printf("[%x:%x] (N=%d, name=%s:role=%s) cmd = %d ins_id = %s\n", info->id.h, info->id.l,
+			info->N, info->name, info->role, cmd->cmd, data->c_str());
 	m_data_mgr->data_dispatch(cmd->cmd, data);
 }
 #endif
@@ -150,7 +154,22 @@ void data_manager::load_strategy(const std::vector<std::string>& args) {
 	m_data_mgr->load_strategy(args);
 }
 
-int data_manager::request_subscribe_by_id(E15_StringArray& sa, int start, int end, int interval) {
+void data_manager::send_sub_req(E15_ServerCmd& cmd, E15_String& s) {
+#ifdef RUN_AS_CLIENT
+	E15_ClientMsg msg;
+	msg.cmd = cmd.cmd;
+	Request(&m_proxy_id, &msg, s.c_str(), s.Length());
+#else
+	for (auto id : m_server_id[g_conf.md_role])
+		Request(&id, 0, &cmd, s.c_str(), s.Length());
+
+	if (!g_conf.conn_real)		//如果连接的是模拟盘，那么还要向历史行情发请求
+		for (auto id : m_server_id[g_conf.his_md_role])
+			Request(&id, 0, &cmd, s.c_str(), s.Length());
+#endif
+}
+
+void data_manager::request_subscribe_by_id(E15_StringArray& sa, int start, int end, int interval) {
 	/* Construct Json string according to the `instrument_name` */
 	E15_ValueTable vt;
 	vt.InsertS("id_list")->SetStringArray(&sa);
@@ -161,71 +180,75 @@ int data_manager::request_subscribe_by_id(E15_StringArray& sa, int start, int en
 
 	E15_String s;
 	vt.Dump(&s);
+	printf("订阅合约 start=%d, end=%d, interval=%d\n", start, end, interval);
 
 
 #ifdef RUN_AS_CLIENT
 	E15_ClientMsg msg;
 	msg.cmd = Stock_Msg_SubscribeById;
-	return Request(&m_proxy_id, &msg, s.c_str(), s.Length());
+	Request(&m_proxy_id, &msg, s.c_str(), s.Length());
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_SubscribeById;
-	return Request(&m_dia_id, 0, &cmd, &s);
+	send_sub_req(cmd, s);
 #endif
 }
 
-int data_manager::request_unsubscribe_by_id(E15_StringArray& sa) {
+void data_manager::request_unsubscribe_by_id(E15_StringArray& sa) {
 	E15_ValueTable vt;
 	vt.InsertS("id_list")->SetStringArray(&sa);
 	vt.InsertS("conn_real")->SetUInt(g_conf.conn_real);
 
 	E15_String s;
 	vt.Dump(&s);
+	printf("取消指定合约订阅！\n");
 
 #ifdef RUN_AS_CLIENT
 	E15_ClientMsg msg;
 	msg.cmd = Stock_Msg_UnSubscribeById;
-	return Request(&m_proxy_id, &msg, s.c_str(), s.Length());
+	Request(&m_proxy_id, &msg, s.c_str(), s.Length());
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_UnSubscribeById;
-	return Request(&m_dia_id, 0, &cmd, &s);
+	send_sub_req(cmd, s);
 #endif
 }
 
-int data_manager::request_subscribe_all() {
+void data_manager::request_subscribe_all() {
 	E15_ValueTable vt;
 	vt.InsertS("conn_real")->SetUInt(g_conf.conn_real);
 
 	E15_String s;
 	vt.Dump(&s);
+	print_thread_safe(g_log, "开始订阅所有合约！\n");
 
 #ifdef RUN_AS_CLIENT
 	E15_ClientMsg msg;
 	msg.cmd = Stock_Msg_SubscribeAll;
-	return Request(&m_proxy_id, &msg, s.c_str(), s.Length());
+	Request(&m_proxy_id, &msg, s.c_str(), s.Length());
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_SubscribeAll;
-	return Request(&m_dia_id, 0, &cmd, &s);
+	send_sub_req(cmd, s);
 #endif
 }
 
-int data_manager::request_unsubscribe_all() {
+void data_manager::request_unsubscribe_all() {
 	E15_ValueTable vt;
 	vt.InsertS("conn_real")->SetUInt(g_conf.conn_real);
 
 	E15_String s;
 	vt.Dump(&s);
+	print_thread_safe(g_log, "取消订阅所有合约！\n");
 
 #ifdef RUN_AS_CLIENT
 	E15_ClientMsg msg;
 	msg.cmd = Stock_Msg_UnSubscribeAll;
-	return Request(&m_proxy_id, &msg, s.c_str(), s.Length());
+	Request(&m_proxy_id, &msg, s.c_str(), s.Length());
 #else
 	E15_ServerCmd cmd;
 	cmd.cmd = Stock_Msg_UnSubscribeAll;
-	return Request(&m_dia_id, 0, &cmd, 0);
+	send_sub_req(cmd, s);
 #endif
 }
 
@@ -238,12 +261,8 @@ void data_manager::send_instruction(const std::string& ins_id, const order_instr
 	TradeTaskRequest req;
 	memset(&req, 0, sizeof(req));
 	memcpy(req.Instrument, ins_id.c_str(), ins_id.size());
-	req.req_id.date = oi.current.date;
-	req.req_id.time = oi.current.time;
-	req.req_id.strategy_id = oi.strategy_id;
-	req.req_id.src = oi.src;
-	req.req_id.seq = oi.trade_seq;
-	req.price = oi.price*10000;
+	req.req_id = oi.uuid;
+	req.price = oi.price;
 	req.volume = oi.vol_cnt;
 	if (DIRECTION_BUY == oi.direction)
 		req.Direct = 1;
@@ -253,19 +272,27 @@ void data_manager::send_instruction(const std::string& ins_id, const order_instr
 		req.open_close = 1;
 	else if (FLAG_CLOSE == oi.flag)
 		req.open_close = 0;
-	req.level = oi.level;
+//	req.level = oi.level;
 	s_trade.Memcpy((const char*)&req, sizeof(TradeTaskRequest));
 
 #ifdef RUN_AS_CLIENT
 	E15_ClientMsg msg;
 	msg.cmd = TRADE_MSG_INPUT_ORDER;
-	Request(&m_proxy_id, &msg, s.c_str(), s.Length());
+	Request(&m_proxy_id, &msg, s_ui.c_str(), s_ui.Length());
 #else
 	E15_ServerCmd cmd;
-	cmd.cmd = TRADE_MSG_INPUT_ORDER;
+	if (FLAG_OPEN == oi.flag)
+		cmd.cmd = Trade_Msg_StrategeOpen;
+	else if (FLAG_CLOSE == oi.flag)
+		cmd.cmd = Trade_Msg_StrategeClose;
 	//给交易服务器发送请求交易的指令，不允许丢包，使用Request发送请求
-	Request(&m_role_id[TRADE_SERVER_NODE], 0, &cmd, &s_trade);
+	for (auto id : m_server_id[g_conf.trade_role])
+		Request(&id, 0, &cmd, s_trade.c_str(), s_trade.Length());
+
 	//同时将交易指令推给前端界面，若系统无法及时处理，允许丢包
-	Notify(&m_client_id, 0, &cmd, &s_ui);
+	for (auto id : m_server_id[g_conf.cli_prx_role])
+		Notify(&id, 0, &cmd, s_ui.c_str(), s_ui.Length());
+	for (auto id : m_client_id)
+		Notify(&id, 0, &cmd, s_ui.c_str(), s_ui.Length());
 #endif
 }

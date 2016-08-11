@@ -17,7 +17,7 @@ CPP_DEPS += \
 %.o: ../%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
-	g++ -std=c++11 -I/home/daniel/workspace/ronghao_investment/ronghao_library/stock_inc -I/home/daniel/workspace/common_library/include -I/home/daniel/workspace/ronghao_investment/include -I/home/daniel/workspace/ronghao_investment/ronghao_library/cxx_inc -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	g++ -std=c++11 -I/home/daniel/workspace/common_library/include -I/home/daniel/workspace/ronghao_investment/ver2/dev/stock_inc -I/home/daniel/workspace/ronghao_investment/ver2/sdk/include -I/home/daniel/workspace/ronghao_investment/include -I/home/daniel/workspace/ronghao_investment/ver2/cxx_inc -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

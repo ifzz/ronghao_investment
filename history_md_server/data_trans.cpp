@@ -1,4 +1,5 @@
-#include "stdafx.h"
+#include "data_trans.h"
+#include "history_mgr.h"
 
 E15_Socket g_socket;
 
@@ -10,20 +11,25 @@ data_trans::data_trans(history_mgr *mgr_ptr)
 int data_trans::start() {
 	g_socket.Start();
 	Start(&g_socket, "ini/server.ini");
+
+	E15_Ini ini;
+	ini.Read("ini/config.ini");
+	ini.SetSection("role");
+	m_stg_role = ini.ReadString("stg", "");
+	m_dia_role = ini.ReadString("dia", "");
 	return 1;
 }
 
 void data_trans::stop() {
 	Stop();
 	g_socket.Stop();
-	m_node_list.clear();
 }
 
-void data_trans::send_data(E15_String *data, int cmd) {
+void data_trans::send_data(const std::string& ins_id, E15_String *data, int cmd) {
 	E15_ServerCmd sc;
 	sc.cmd = cmd;
-	sc.status = 1;
-	Notify(&m_diagram_id, 0, &sc, data->c_str(), data->Length());
+	sc.status = MarketCodeById(ins_id.c_str());
+	Notify(&m_dia_id, 0, &sc, data->c_str(), data->Length());
 	delete data;
 }
 
@@ -31,53 +37,33 @@ int data_trans::OnOpen(E15_ServerInfo * info,E15_String *& json) {
 	print_thread_safe("[%x:%x] (N=%d,name=%s:role=%s) 上线\n", info->id.h,
 			info->id.l, info->N, info->name, info->role);
 
-	if (!strcmp(info->role, STRATEGY_NODE) || !strcmp(info->role, STRATEGY_PROXY)) {
-		m_node_list.push_back(std::make_shared<NODE_INFO>(info->id));
+	if (!strcmp(info->role, m_stg_role.c_str())) {
+		m_stg_id = info->id;
 		print_thread_safe("[history_md]连接到策略服务器(%x:%x, name=%s, role=%s)\n", info->id.h,
 				info->id.l, info->name, info->role);
 	}
 
-	if (!strcmp(info->role, MARKET_DATA_NODE)) {
-		m_diagram_id = info->id;
+	if (!strcmp(info->role, m_dia_role.c_str())) {
+		m_dia_id = info->id;
+		send_ins_info("ni1609", m_dia_id);
 		print_thread_safe("[history_md]连接到指标生成服务器(%x:%x, name=%s, role=%s)\n", info->id.h,
 				info->id.l, info->name, info->role);
 	}
-
-	send_ins_info("600030", info->id);		//任何节点与该服务器连接时都发送合约列表信息
-
-	//初始化完成后自动发送id为600030的合约用来测试
-//	m_mgr_ptr->history_subscribe("600030", 20160628, 20160628, 500);
 	return 1;
 }
 
 int data_trans::OnClose(E15_ServerInfo * info) {
 	print_thread_safe("[%x:%x] (N=%d, name=%s:role=%s) 下线\n", info->id.h, info->id.l,
 			info->N, info->name, info->role);
-
-	if (!strcmp(info->role, STRATEGY_NODE)) {
-		auto it = find_node(info->id);
-		if (m_node_list.end() != it)
-			m_node_list.erase(it);
-	}
-
-//	m_mgr_ptr->history_unsubscribe("600030");
 	return 1000;		//自动重联
 }
 
-std::list<std::shared_ptr<NODE_INFO>>::iterator data_trans::find_node(E15_Id& id) {
-	auto it = m_node_list.begin();
-	for (; it != m_node_list.end(); ++it)
-		if ((*it)->id == id)
-			break;
-	return it;
-}
-
 void data_trans::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data) {
-	auto it = find_node(info->id);
 	switch(cmd->cmd) {		//只要接到请求就相应
 	case Stock_Msg_SubscribeById:
 	case Stock_Msg_UnSubscribeById:
-		handle_subscribe(it, cmd->cmd, data);
+		printf("收到订阅/退订请求 id=[%x:%x] cmd=%d data=%s！\n", info->id.h, info->id.l, cmd->cmd, data->c_str());
+		handle_subscribe(cmd->cmd, data);
 		break;
 
 	default:
@@ -85,7 +71,7 @@ void data_trans::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_Server
 	}
 }
 
-int data_trans::handle_subscribe(std::list<std::shared_ptr<NODE_INFO>>::iterator& it, int cmd, E15_String *&data) {
+int data_trans::handle_subscribe(int cmd, E15_String *&data) {
 	E15_ValueTable vt;
 	vt.Import(data->c_str(), data->Length());
 	E15_Value *v = vt.ValueS("id_list");
@@ -109,18 +95,10 @@ int data_trans::handle_subscribe(std::list<std::shared_ptr<NODE_INFO>>::iterator
 
 	for (unsigned long i = 0; i < sa->Size(); ++i) {
 		E15_String *s = sa->At(i);
-		if (Stock_Msg_UnSubscribeById == cmd) {		//取消订阅
-			if ((*it)->ins_set.end() != (*it)->ins_set.find(s->c_str())) {
-				(*it)->ins_set.erase(s->c_str());
-				m_mgr_ptr->history_unsubscribe(s->c_str());
-			}
-		} else {		//Stock_Msg_SubscribeById == cmd
-			if ((*it)->ins_set.end() == (*it)->ins_set.find(s->c_str())) {
-				(*it)->ins_set.insert(s->c_str());
-				m_mgr_ptr->history_subscribe(s->c_str(), start, end, interval);
-				send_ins_info(s->c_str(), m_diagram_id);
-			}
-		}
+		if (Stock_Msg_UnSubscribeById == cmd)		//取消订阅
+			m_mgr_ptr->history_unsubscribe(s->c_str());
+		else		//Stock_Msg_SubscribeById == cmd
+			m_mgr_ptr->history_subscribe(s->c_str(), start, end, interval);
 	}
 	return sa->Size();
 }
@@ -133,8 +111,10 @@ void data_trans::send_ins_info(const char *ins, E15_Id& id) {
 	vt->SetSI("tick", 100);
 	vt->SetSI("Multiple", 1);
 	vt->SetSS("exchange", "sh");
-	vt->SetSS("product", ":CNA");
+	vt->SetSS("product", "ni");
 
+
+	m_instrument_list.Print();
 	E15_String s;
 	m_instrument_list.Dump(&s);
 

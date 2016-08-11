@@ -2,7 +2,7 @@
 
 static bool g_want_to_stop = false;
 
-bool processor::load(const char *library, const char *config) {
+bool processor::load(const char *library, const char *config, uint32_t stg_id, uint16_t src_id) {
 	m_handle = dlopen(library, RTLD_NOW);
 	if (!m_handle) {
 		printf("[strategy manager(child)] Fail to open shared library '%s' with error: %s\n", library, dlerror());
@@ -19,8 +19,10 @@ bool processor::load(const char *library, const char *config) {
 	m_strategy = create_strategy();
 	sb_impl *impl = static_cast<sb_impl*>(m_strategy->m_obj);
 	impl->m_mgr_ptr = m_mgr_ptr;
-	m_strategy->read_config(config);		//读配置
-	m_strategy->init();		//初始化
+	impl->m_stg_id = stg_id;
+	impl->m_src_id = src_id;
+	impl->read_config(config);		//读配置
+	impl->on_init();		//初始化
 	printf("[strategy manager] create strategy instance with(run in child %d) library name `%s` with config `%s` succ!\n",
 			getpid(), library, config);
 	return true;
@@ -83,6 +85,12 @@ void strategy_manager::feed_data(int fd, void *arg) {
 			return;
 		}
 		this_ptr->data_dispatch(cmd, (const char*)&m["data"].front(), m["data"].size());
+		if (Stock_Msg_DiagramInfo == cmd) {
+			uint32_t stg_id = *(uint32_t*)m["stg_id"].data();
+			uint16_t src_id = *(uint16_t*)m["src_id"].data();
+			if (!this_ptr->m_processor->load(this_ptr->m_library, this_ptr->m_config, stg_id, src_id))
+				g_want_to_stop = true;
+		}
 	}, nullptr);
 }
 
@@ -97,8 +105,6 @@ void strategy_manager::data_dispatch(int cmd, const char *data, size_t len) {
 	case Stock_Msg_DiagramInfo: {
 		parse_diagram_info(data, len);
 		printf("[test_child (%d)] get the diagram info with bytes=%ld succ!\n", getpid(), len);
-		if (!m_processor->load(m_library, m_config))
-			g_want_to_stop = true;
 		break;
 	}
 
@@ -113,7 +119,6 @@ void strategy_manager::data_dispatch(int cmd, const char *data, size_t len) {
 
 //在策略执行过程中会触发请求交易的信号，这里的操作只是简单的将交易数据转发给框架
 void strategy_manager::send_instruction(const std::string& ins_id, order_instruction& oi) {
-	oi.trade_seq = m_seq++;
 	m_seria.insert("ins_id", ins_id.c_str(), ins_id.length());
 	m_seria.insert("oi", (const char*)&oi, sizeof(order_instruction));
 	m_seria.write(m_write_fifo);

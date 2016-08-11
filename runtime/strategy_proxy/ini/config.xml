@@ -1,12 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
-	<!-- server role -->
-	<role
-		real_md = "proxy"
-		his_md = "md_server"
-		trade = "trade"
-		ui = ""
-		ope_mgr = ""
-	>
-	</role>
+    <!-- server role -->
+    <role real_md="proxy" his_md="md_server" trade="trade" ui="" ope_mgr=""/>
 </config>

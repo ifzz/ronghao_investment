@@ -3,6 +3,7 @@
 	<name>ss_util</name>
 	<comment></comment>
 	<projects>
+		<project>kbase</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

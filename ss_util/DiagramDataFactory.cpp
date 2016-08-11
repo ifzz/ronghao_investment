@@ -1,8 +1,6 @@
 #include "rhafx.h"
 
-std::deque<std::shared_ptr<item_with_type>> g_diagram_temp_queue;
-std::set<DiagramDataItem*> g_diagram_temp_set;
-
+std::deque<raw_dia_group> g_dia_deq;
 
 DataDescription::DataDescription()
 {
@@ -65,7 +63,7 @@ int on_tag_desc(E15_Key * k,E15_Value *v,OnTagParam * p)
 	desc->m_dt.type_index = index;
 	desc->m_dt.parent_index = p->parent_index;
 
-//	E15_Debug::Printf(0,"tag[ %d] %s : %s : %ld\n",index,desc->m_dt.class_name,desc->m_dt.name,desc->m_dt.param );
+	E15_Debug::Printf(0,"tag[ %d] %s : %s : %ld\n",index,desc->m_dt.class_name,desc->m_dt.name,desc->m_dt.param );
 
 	return 0;
 }
@@ -96,7 +94,7 @@ int on_data_desc(E15_Key * k,E15_Value *v,E15_Queue *q)
 	desc->m_dt.parent_index = -1;
 	desc->m_dt.store_level = v->BaseS("store");
 
-//	E15_Debug::Printf(0,"data[ %d] %s : %s : %ld\n",index,desc->m_dt.class_name,desc->m_dt.name,desc->m_dt.param );
+	E15_Debug::Printf(0,"data[ %d] %s : %s : %ld\n",index,desc->m_dt.class_name,desc->m_dt.name,desc->m_dt.param );
 
 	E15_Value *tags = v->ValueS("tags");
 	if( !tags )
@@ -623,17 +621,31 @@ int DiagramDataFactory::LoadHistoryTag(HistoryRequest * req,const char * data,un
 	return 1;
 }
 
-void insert_package_queue(const char *id, int index, DiagramDataItem *data) {
-	if (g_diagram_temp_set.end() == g_diagram_temp_set.find(data)) {
-		g_diagram_temp_set.insert(data);
+void insert_package_queue(DiagramDataItem *data, int data_index, int tag_index, int mode) {
+	auto it = g_dia_deq.begin();
+	for (; it != g_dia_deq.end(); ++it)
+		if (it->data == data)
+			break;
 
-		std::shared_ptr<item_with_type> item = std::make_shared<item_with_type>();
-		item->data_index = index;
-		item->data = data;
-//		printf("insert new diagram package(%p) date=%d, seq=%d, status=%d, type=%d,"
-//				"==>index=%d\n", item.get(), item->data->base._date,
-//				item->data->base._seq, item->data->base._state, item->data->base._type, item->data_index);
-		g_diagram_temp_queue.push_back(std::move(item));
+	if (it == g_dia_deq.end()) {		//没找到
+		g_dia_deq.push_back(raw_dia_group());
+		it = g_dia_deq.end()-1;
+		it->data_index = data_index;
+		it->data = data;
+	}
+
+//	if (1 == data_index && data->base._seq == 18) {		//12秒K线/seq=18
+//		printf("@@@@@@@@ 12秒kline data=%p, data_index=%d, tag_index=%d, mode=%d, seq=%d\n",
+//				data, data_index, tag_index, mode, data->base._seq);
+//	}
+
+	if (tag_index == -1) { 		//data
+		it->mode = mode;
+//		printf("[insert_package_queue]当前更新的是data=%p, data_index=%d, mode=%d\n", data, data_index, mode);
+	} else {		//tag
+		it->tag_mode[tag_index] = mode;
+//		printf("[insert_package_queue]当前更新的是data（%p）下的tag，data_index=%d, tag_index=%d, mode=%d\n",
+//				data, data_index, tag_index, mode);
 	}
 }
 
@@ -666,7 +678,8 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 	if( mode == 1 ) //0 删除，1新增，2修改
 	{
 		DiagramDataItem * tail = h->PeekDataItem(-1);
-		//E15_Debug::Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u])\n",h->m_dt->class_name,h->m_dt->name,h->m_dt->param,base->_date,base->_seq);
+//		E15_Debug::Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u])\n",h->m_dt->class_name,
+//				h->m_dt->name,h->m_dt->param,base->_date,base->_seq);
 		if( tail )
 		{
 			if( tail->base._date > base->_date) //新增数据日期太旧，抛弃
@@ -685,9 +698,11 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 			data->pri->Strcpy(ext_data, h->ext_len);
 		}
 
-		insert_package_queue(m_info->id, index, data);
+		insert_package_queue(data, index, -1, mode);
 
 		h->m_data->PutTail(data);
+		while (h->m_data->Count() > 2000)
+			h->m_data->RemoveHead(0);
 
 		return h->m_data->Count(); //新增后，可能需要写文件了
 	}
@@ -711,7 +726,7 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 			data->pri->Strcpy(ext_data, h->ext_len);
 		}
 
-		insert_package_queue(m_info->id, index, data);
+		insert_package_queue(data, index, -1, mode);
 		h->m_data->PutHead(data);
 
 		return h->m_data->Count();
@@ -721,7 +736,7 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 	if( mode == 0 )
 	{
 		delete data;
-
+		insert_package_queue(data, index, -1, mode);
 		return h->m_data->Count();
 	}
 
@@ -733,7 +748,7 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 			data->pri = new E15_String;
 		data->pri->Strcpy(ext_data, len);
 	}
-	insert_package_queue(m_info->id, index, data);
+	insert_package_queue(data, index, -1, mode);
 	return h->m_data->Count();
 
 }
@@ -775,7 +790,7 @@ int DiagramDataFactory::OnTag(MarketDepthData * depth,int mode,int data_index,in
 	if( mode == 0 && data->tags[tag_index])
 	{
 		data->tags[tag_index]->base._date = 0; //做一个无效标记即可
-		insert_package_queue(m_info->id, data_index, data);
+		insert_package_queue(data, data_index, tag_index, mode);
 		return 1;
 	}
 
@@ -790,7 +805,7 @@ int DiagramDataFactory::OnTag(MarketDepthData * depth,int mode,int data_index,in
 			tag_h->ext_len = len ;
 			tag->pri->Strcpy(ext_data, tag_h->ext_len);
 		}
-		insert_package_queue(m_info->id, data_index, data);
+		insert_package_queue(data, data_index, tag_index, mode);
 		return 1;
 	}
 
@@ -818,7 +833,7 @@ int DiagramDataFactory::OnTag(MarketDepthData * depth,int mode,int data_index,in
 		tag->pri->Strcpy(ext_data, tag_h->ext_len );
 	}
 
-	insert_package_queue(m_info->id, data_index, data);
+	insert_package_queue(data, data_index, tag_index, mode);
 	return 1;
 }
 

@@ -17,6 +17,7 @@ struct ins_data {
 	unsigned int m_seq, m_init_k_num, m_n_plus_one_close_price;
 	unsigned int m_n_plus_one_seq;
 	unsigned int m_n_plus_two_highest_price, m_n_plus_two_lowest_price;
+	TradeUUID uuid;
 
 	ins_data()
 	:m_sts(STATUS_INIT)
@@ -39,13 +40,14 @@ public:
 	virtual void execute(depth_dia_group& group);
 
 private:
-	void fi_init(MarketAnalyseDataBase *base, MarketAnalyseKline *ext, ins_data& data);
-	void fi_n_ready(MarketAnalyseDataBase *base, MarketAnalyseKline *ext, ins_data& data);
-	void fi_n_plus_one_ready(MarketAnalyseDataBase *base, MarketAnalyseKline *ext, depth_dia_group& group, ins_data& data);
-	void fi_open_buy(MarketAnalyseDataBase *base, MarketAnalyseKline *ext, depth_dia_group& group, ins_data& data);
-	void fi_open_sell(MarketAnalyseDataBase *base, MarketAnalyseKline *ext, depth_dia_group& group, ins_data& data);
+	void fi_init(dia_group& dia, ins_data& data);
+	void fi_n_ready(dia_group& dia, ins_data& data);
+	void fi_n_plus_one_ready(const std::string& ins_id, dia_group& dia, ins_data& data);
+	void fi_open_buy(const std::string& ins_id, dia_group& dia, ins_data& data);
+	void fi_open_sell(const std::string& ins_id, dia_group& dia, ins_data& data);
 
-	 void execute_trade(depth_dia_group& group, OFFSET_FLAG flag, TRADE_DIRECTION direction);
+	void go(const std::string& ins_id, MarketDepthData *depth, dia_group& dia);
+	 void execute_trade(const std::string& ins_id, dia_group& dia, OFFSET_FLAG flag, TRADE_DIRECTION direction);
 
 private:
 	int32_t m_1minkline_index;

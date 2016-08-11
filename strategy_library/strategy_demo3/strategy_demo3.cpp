@@ -5,7 +5,6 @@ std::shared_ptr<strategy_base> create_strategy() {
 }
 
 void strategy_demo3::init() {
-	strategy_base::init();
 	m_12skline_index = m_type_map["12秒kline"].type_index;
 }
 
@@ -15,13 +14,16 @@ void strategy_demo3::execute_trade(depth_dia_group& group, TRADE_DIRECTION direc
 	market.time = group.depth->base.nTime;
 
  	order_instruction oi;
- 	oi.type_index = m_12skline_index;
- 	oi.dia_seq = group.diagrams[m_12skline_index].base->_seq;
- 	oi.flag = FLAG_OPEN;
- 	oi.direction = direction;
- 	oi.level = 1;
  	oi.market = market;
+ 	oi.direction = direction;
+ 	oi.flag = FLAG_OPEN;
  	oi.price = price;
+
+ 	oi.vol_cnt = 1;
+ 	oi.level = 1;
+
+ 	oi.type_index = m_12skline_index;
+ 	oi.dia_seq = group.dias[m_12skline_index].back().base->_seq;
  	request_trade(group.ins_id, oi);
 }
 

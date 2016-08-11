@@ -17,17 +17,30 @@ public:
 };
 
 class ss_util;
-struct sb_impl {
+class sb_impl {
+public:
+	sb_impl(strategy_base *base)
+	:m_stg_id(0)
+	,m_src_id(0)
+	,m_seq_id(0)
+	,m_mgr_ptr(nullptr)
+	,m_this_stg(base)
+	,m_current_date(0)
+	,m_trade_import(nullptr) {}
+	virtual ~sb_impl() {}
+
+	void read_config(const char *config);
+	void on_init();
+
+	unsigned int m_stg_id;			//策略id
+	unsigned short m_src_id;		//下单源id
+	unsigned short m_seq_id;	//流水号
 	ss_util *m_mgr_ptr;
+	strategy_base *m_this_stg;
 	unsigned int m_current_date;
 	FILE *m_trade_import;
 	char format_buf[1024];
 	E15_Log m_log;			//每个具体的策略都有一个私有的日志
-
-	sb_impl()
-	:m_mgr_ptr(nullptr)
-	,m_current_date(0)
-	,m_trade_import(nullptr) {}
 };
 
 struct contract_info {
@@ -55,6 +68,7 @@ public:
 	void for_each_ins(std::function<void(const std::string&, const ContractInfo&, void*)> f, void *args);
 	datetime get_current_datetime();
 
+	virtual unsigned int get_usable_stg_id() { return 0; }
 	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) = 0;
 
 protected:
@@ -79,5 +93,3 @@ protected:
 	E15_String m_unzip_buffer;
 	E15_ValueTable m_vt;
 };
-
-void print_thread_safe(E15_Log& log, const char *format, ...);

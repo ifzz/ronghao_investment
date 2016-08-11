@@ -1,5 +1,12 @@
 #pragma once
 
+#include "data_manager.h"
+
+extern E15_Log g_log;
+extern E15_Socket g_socket;
+
+void print_thread_safe(E15_Log& log, const char *format, ...);
+
 class strategy_job : public crx::evd_thread_job {
 public:
 	strategy_job(int64_t type) : crx::evd_thread_job(type), raw(nullptr) {}
@@ -66,28 +73,32 @@ struct library_info {
 class strategy_manager : public ss_util {
 public:
 	strategy_manager()
-	:m_statis_stop(false) {
+	:m_test_exist_data(false)
+	,m_statis_stop(false) {
 		m_data_recv = new data_manager(this);
 	}
 	virtual ~strategy_manager() { delete m_data_recv; }
+	bool m_test_exist_data;
 
 public:
-	void load_strategy(const std::vector<std::string>& args);
-	void unload_strategy(const std::vector<std::string>& args);
-	void data_dispatch(int cmd, E15_String *&data);
-
 	virtual bool init(int argc, char *argv[]);
 	virtual void destroy();
+	virtual unsigned int get_usable_stg_id();
 	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) {
-		if (g_conf.for_produce)
-			oi.trade_seq = m_seq++;
 		m_data_recv->send_instruction(ins_id, oi);
 	}
+
+	void load_strategy(const std::vector<std::string>& args, bool record = true);
+	void unload_strategy(const std::vector<std::string>& args, bool record = true);
+	void data_dispatch(int cmd, E15_String *&data);
+
+
 
 	void child_crash(pid_t pid);
 	void flush();
 	void show_all();
 	void show_run();
+	void test(const std::vector<std::string>& args);
 	void register_rfifo(int fd);
 	void unregister_rfifo(int fd);
 
@@ -107,7 +118,8 @@ private:
 	static void statis_thread(bool *want_to_stop);
 
 private:
-	std::atomic<unsigned short> m_seq;
+	std::vector<uint8_t> m_stg_runtime_id;		//每个策略的运行时id
+
 	crx::xml_parser m_xml;
 	data_manager *m_data_recv;
 	crx::epoll_thread m_trade_th;
@@ -117,5 +129,6 @@ private:
 	//用于指标测试的成员变量
 	bool m_statis_stop;
 	std::thread m_statis_th;
+	crx::seria m_seria;
 	std::map<int, std::shared_ptr<crx::deseria>> m_fd_des;
 };

@@ -13,13 +13,16 @@
 #include "stock_data.h"
 
 class DiagramDataItem;
-struct item_with_type {
-	int data_index;
+struct raw_dia_group {
 	DiagramDataItem *data;
-};
+	int data_index, mode;
+	std::map<int, int> tag_mode;		//it->first: tag_index, it->second: tag_mode
 
-extern std::deque<std::shared_ptr<item_with_type>> g_diagram_temp_queue;
-extern std::set<DiagramDataItem*> g_diagram_temp_set;
+	raw_dia_group()
+	:data(nullptr)
+	,mode(-1) {}
+};
+extern std::deque<raw_dia_group> g_dia_deq;
 
 extern StockDataCache 	* g_market_data;
 

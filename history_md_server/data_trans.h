@@ -1,12 +1,6 @@
 #pragma once
 
-struct NODE_INFO {
-	E15_Id id;
-	std::set<std::string> ins_set;
-
-	NODE_INFO(E15_Id node_id)
-	:id(node_id) {}
-};
+#include "rhafx.h"
 
 class history_mgr;
 class data_trans : public E15_Server {
@@ -17,7 +11,7 @@ public:
 public:
 	int start();
 	void stop();
-	void send_data(E15_String *data, int cmd);
+	void send_data(const std::string& ins_id, E15_String *data, int cmd);
 
 public:
 	/* server callback */
@@ -28,14 +22,13 @@ public:
 	virtual void OnNotify(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data) {}
 
 private:
-	std::list<std::shared_ptr<NODE_INFO>>::iterator find_node(E15_Id& id);
-	int handle_subscribe(std::list<std::shared_ptr<NODE_INFO>>::iterator& it, int cmd, E15_String *&data);
+	int handle_subscribe(int cmd, E15_String *&data);
 	void send_ins_info(const char *ins, E15_Id& id);
 
 private:
 	history_mgr *m_mgr_ptr;
-	E15_Id m_diagram_id;
-	std::list<std::shared_ptr<NODE_INFO>> m_node_list;
+	std::string m_stg_role, m_dia_role;
+	E15_Id m_stg_id, m_dia_id;
 
 	int m_market;
 	E15_ValueTable m_instrument_list;

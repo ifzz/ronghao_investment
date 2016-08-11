@@ -1,5 +1,10 @@
 #pragma once
 
+#include "data_trans.h"
+#include "store_history.h"
+
+extern void print_thread_safe(const char *format, ...);
+
 class history_mgr;
 class data_parser : public crx::evd_thread_processor {
 public:
@@ -52,8 +57,8 @@ public:
 public:
 	virtual bool init(int argc, char *argv[]);
 	virtual void destroy();
-	void send_history(E15_String *data, int cmd) {
-		m_trans->send_data(data, cmd);
+	void send_history(const std::string& ins_id, E15_String *data, int cmd) {
+		m_trans->send_data(ins_id, data, cmd);
 	}
 	void notify_over(const std::string& ins_id);
 	void load_depth(const char *ins_id, data_parser *parser, unsigned int date);

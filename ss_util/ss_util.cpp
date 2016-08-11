@@ -2,12 +2,12 @@
 
 crx::evd_thread_pool g_log_th;
 std::shared_ptr<log_handle> g_log_hd;
-config g_conf;
+stg_config g_conf;
 
 void log_handle::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 	auto j = std::dynamic_pointer_cast<log_job>(job);
 	j->log->Printf(0, j->print_str.c_str());
-	if (PRINT_SCREEN)
+	if (true)
 		printf("%s", j->print_str.c_str());
 }
 
@@ -33,7 +33,7 @@ void strategy_base::print_thread_safe(const char *format, ...) {
 
 strategy_base::strategy_base()
 :m_strategy_time(0) {
-	m_obj = new sb_impl;
+	m_obj = new sb_impl(this);
 }
 
 strategy_base::~strategy_base() {
@@ -45,29 +45,35 @@ strategy_base::~strategy_base() {
 	delete impl;
 }
 
-void strategy_base::read_config(const char *config) {
+void sb_impl::read_config(const char *config) {
 	E15_Ini ini;
 	ini.Read(config);
-	m_strategy_ini = config;
+	m_this_stg->m_strategy_ini = config;
 
 	ini.SetSection("share");
-	sb_impl *impl = static_cast<sb_impl*>(m_obj);
 	int sub_all = 1;
 	ini.Read("sub_all", sub_all);
 
 	if (sub_all) {
-		impl->m_mgr_ptr->for_each_ins([&](const std::string& ins, const ContractInfo& info, void *args)->void {
-			m_ins_info[ins] = info;
+		m_mgr_ptr->for_each_ins([&](const std::string& ins, const ContractInfo& info, void *args)->void {
+			m_this_stg->m_ins_info[ins] = info;
 		}, nullptr);
 	} else {
 		std::string ins_id = ini.ReadString("ins_id", "");		//获取关注的合约id
 		for (auto& id : crx::split(ins_id, ";"))
-			m_ins_info[id] = impl->m_mgr_ptr->get_ins_info(id);
+			m_this_stg->m_ins_info[id] = m_mgr_ptr->get_ins_info(id);
 	}
 
 	ini.SetSection("custom");
-	std::string diagram_type = ini.ReadString("diagram_type", "");		//关注的指标类型
-	for (auto& dt : crx::split(diagram_type, ";")) {
+	std::map<std::string, const char*> cus_ini;
+	const char *key = ini.GetFirstKey();
+	do {
+		cus_ini[key] = ini.ReadString(key, "");
+		key = ini.GetNextKey();
+	} while (key);
+
+	auto& dia_type = cus_ini["diagram_type"];		//关注的指标类型
+	for (auto& dt : crx::split(dia_type, ";")) {
 		auto desc = crx::split(dt, ":");
 		for (unsigned int i = 0; i < g_data_tag_info.m_list->Count(); ++i) {
 			DataDescription *ddesc = (DataDescription*)g_data_tag_info.m_list->At(i, 0);
@@ -80,20 +86,22 @@ void strategy_base::read_config(const char *config) {
 				dia_map.type_index = ddesc->m_dt.type_index;
 				for (unsigned int j = 0; j < ddesc->m_sub->Count(); ++j) {
 					DataDescription *tag_desc = (DataDescription*)ddesc->m_sub->At(j, 0);
-					std::string kavg_name = std::to_string(tag_desc->m_dt.param)+tag_desc->m_dt.name;
+					std::string kavg_name = std::to_string(tag_desc->m_dt.param)+tag_desc->m_dt.name+tag_desc->m_dt.class_name;
 					dia_map.tags[kavg_name] = tag_desc->m_dt.type_index;
 				}
-				m_type_map[kline_name] = dia_map;
+				m_this_stg->m_type_map[kline_name] = dia_map;
 				break;
 			}
 		}
 	}
+	cus_ini.erase("diagram_type");
+	m_this_stg->read_conf(cus_ini);
 }
 
-void strategy_base::init() {
+void sb_impl::on_init() {
 	//策略私有日志初始化
-	sb_impl *impl = static_cast<sb_impl*>(m_obj);
-	impl->m_log.Init(m_strategy_name.c_str(), 100);
+	m_log.Init(m_this_stg->m_strategy_name.c_str(), 100);
+	m_stg_id = m_mgr_ptr->get_usable_stg_id();
 
 	//记录该策略对应的全局配置信息
 	char strategy_config_buffer[1024] = {0};
@@ -107,33 +115,41 @@ void strategy_base::init() {
 			"\n\t==>创建策略库的时间：%d，"
 			"\n\t==>策略配置名：%s，"
 			"\n\t==>策略备注：%s",
-				m_strategy_name.c_str(),
-				m_strategy_version.c_str(),
-				m_strategy_author.c_str(),
-				m_strategy_developer.c_str(),
-				m_strategy_time,
-				m_strategy_ini.c_str(),
-				m_strategy_comment.c_str());
+				m_this_stg->m_strategy_name.c_str(),
+				m_this_stg->m_strategy_version.c_str(),
+				m_this_stg->m_strategy_author.c_str(),
+				m_this_stg->m_strategy_developer.c_str(),
+				m_this_stg->m_strategy_time,
+				m_this_stg->m_strategy_ini.c_str(),
+				m_this_stg->m_strategy_comment.c_str());
 	strategy_config += strategy_config_buffer;
 
-	auto type = m_type_map.begin();
-	if (type != m_type_map.end()) {
+	auto type = m_this_stg->m_type_map.begin();
+	if (type != m_this_stg->m_type_map.end()) {
 		sprintf(strategy_config_buffer, "\n\t==>当前这个策略主要关注的指标数据包括：%s（%d）",
 				type->first.c_str(), type->second.type_index);
 		strategy_config += strategy_config_buffer;
 
-		while (++type != m_type_map.end()) {		//记录关注的所有指标数据类型
+		while (++type != m_this_stg->m_type_map.end()) {		//记录关注的所有指标数据类型
 			sprintf(strategy_config_buffer, ", %s（%d）", type->first.c_str(), type->second.type_index);
 			strategy_config += strategy_config_buffer;
 		}
 	}
 	strategy_config += "\n###############################################################\n";
-	print_thread_safe(strategy_config.c_str());
+	m_this_stg->print_thread_safe(strategy_config.c_str());
+	m_this_stg->init();
 }
 
 void strategy_base::request_trade(const std::string& ins_id, order_instruction& oi) {
 	sb_impl *impl = static_cast<sb_impl*>(m_obj);
-	oi.current = impl->m_mgr_ptr->get_current_datetime();
+	if (FLAG_OPEN == oi.flag) {
+		datetime dt = impl->m_mgr_ptr->get_current_datetime();
+		oi.uuid.date = dt.date;
+		oi.uuid.time = dt.time;
+		oi.uuid.strategy_id = impl->m_stg_id;
+		oi.uuid.src = 0;
+		oi.uuid.seq = impl->m_seq_id++;
+	}
 	impl->m_mgr_ptr->send_instruction(ins_id, oi);
 
 	/*
@@ -174,18 +190,23 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 	char buf[128] = {0};
 	//本地日期#时间 策略id 下单源id 交易流水号 合约id 指标类型#指标流水号 开平#交易方向 价格#手数#信号 行情日期#时间
 	sprintf(buf, "本地%d#%d %d %d %d  %s  %s#%d  %s#%s  %lld#%d#%d  行情%d#%d\n",
-			oi.current.date, oi.current.time, oi.strategy_id, oi.src, oi.trade_seq, ins_id.c_str(), diagram.c_str(), oi.dia_seq,
+			oi.uuid.date, oi.uuid.time, oi.uuid.strategy_id, oi.uuid.src, oi.uuid.seq, ins_id.c_str(), diagram.c_str(), oi.dia_seq,
 			offset_flag.c_str(), trade_direction.c_str(), oi.price, oi.vol_cnt, oi.level, oi.market.date, oi.market.time);
 	print_thread_safe("%s", buf);
 
-	if (impl->m_current_date != oi.current.date) {		//每天新建一个文件，将当日所有下单记录保存在同一个文件中
+	if (impl->m_current_date != oi.uuid.date) {		//每天新建一个文件，将当日所有下单记录保存在同一个文件中
 		if (impl->m_trade_import)		//首先将上一日的文件关闭
 			fclose(impl->m_trade_import);
 
-		impl->m_current_date = oi.current.date;
+		impl->m_current_date = oi.uuid.date;
 		char file[256] = {0};
-		sprintf(file, "%s/%s-%d.log", g_conf.db_import.c_str(), m_strategy_name.c_str(), impl->m_current_date);
+		if (g_conf.for_produce)		//生产环境可以配置买卖点日志的根目录
+			sprintf(file, "%s/%s-%d.log", g_conf.db_import.c_str(), m_strategy_name.c_str(), impl->m_current_date);
+		else		//测试环境直接写死就可以了
+			sprintf(file, "database_import/%s-%d.log", m_strategy_name.c_str(), impl->m_current_date);
 		impl->m_trade_import = fopen(file, "w");		//再新开一个文件存储
+		printf("日期更新，新建一个当前策略的买卖点日志current date = %d, file name = %s, file ptr=%p\n",
+				impl->m_current_date, file, impl->m_trade_import);
 	}
 	fprintf(impl->m_trade_import, "%s", buf);
 }
@@ -205,7 +226,7 @@ void ss_util::parse_ini() {
 	E15_Ini ini;
 	ini.Read("ini/config.ini");
 	ini.SetSection("client");
-	g_conf.ip = ini.ReadString("addr", "127.0.0.1");
+	g_conf.ip = ini.ReadString("addr", "");
 	ini.Read("port", g_conf.port);
 	g_conf.user = ini.ReadString("user", "test");
 	g_conf.passwd = ini.ReadString("password", "123456");
@@ -219,6 +240,14 @@ void ss_util::parse_ini() {
 	g_conf.db_import = ini.ReadString("db_import", "");
 	if (access(g_conf.db_import.c_str(), F_OK))		//创建数据导入目录
 		mkdir(g_conf.db_import.c_str(), 0755);
+
+	g_conf.md_role = ini.ReadString("md_role", "");
+	g_conf.his_md_role = ini.ReadString("his_md_role", "");
+	g_conf.trade_role = ini.ReadString("trade_role", "");
+	g_conf.cli_prx_role = ini.ReadString("cli_prx_role", "");
+
+	g_conf.so_addr = ini.ReadString("so_addr", "");
+	ini.Read("so_port", g_conf.so_port);
 }
 
 void ss_util::global_log_init() {
@@ -319,6 +348,7 @@ int ss_util::handle_diagram_item(E15_Key * key,E15_Value * info,DiagramDataMgr *
 	if( parent_index == (unsigned int)-1) //这个是数据
 	{
 		stock->factory->OnData(stock->depth, mode, index, s);
+//		printf("@@@@@@@@@@@@@ mode=%d index = %d\n", mode, index);
 		return 0;
 	}
 
@@ -346,20 +376,43 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 	E15_ValueTable *dia = m_vt.TableS("dia");
 	if (dia) {
 		dia->each((int (*)(E15_Key * key,E15_Value * info,void *))handle_diagram_item, stock);
-		for (auto& item : g_diagram_temp_queue) {
+		for (auto& raw : g_dia_deq) {
 			dia_group g;
-			g.base = &item->data->base;
-			g.ext = (MarketAnalyseKline*)item->data->pri->c_str();
-			for (int i = 0; i < item->data->tag_cnt; ++i) {
-				if (item->data->tags[i] && item->data->tags[i]->base._date)		//tag存在且有效
-					g.tags.push_back(&item->data->tags[i]->base);
-				else
+			g.base = &raw.data->base;
+			g.ext = (MarketAnalyseKline*)raw.data->pri->c_str();
+			g.mode = raw.mode;
+
+//			if (item.data->tags[0] && !strcmp("ni1609", data) && item.data_index == 1)
+//				printf("tag 0 = %p\n", item.data->tags[0]);
+
+//			if (raw.data_index == 1 && raw.data->base._seq == 18) {
+//				if (raw.tag_mode.end() != raw.tag_mode.find(3) && raw.tag_mode[3] == 0) {
+//					printf("[parse_diagram_group]当前12秒K线，第18个序列包收到一个twistbi被删除的tag\n");
+//				}
+//			}
+
+			for (int i = 0; i < raw.data->tag_cnt; ++i) {
+				if (raw.data->tags[i]) {		//tag存在，删除操作也要通知策略
+					g.tags.push_back(&raw.data->tags[i]->base);
+					if (raw.tag_mode.end() != raw.tag_mode.find(i))
+						g.tag_mode.push_back(raw.tag_mode[i]);
+					else
+						g.tag_mode.push_back(-1);
+				} else {
 					g.tags.push_back(nullptr);
+					g.tag_mode.push_back(-1);
+				}
 			}
-			group.diagrams[item->data_index] = g;
+			group.dias[raw.data_index].push_back(g);
 		}
-		g_diagram_temp_set.clear();
-		g_diagram_temp_queue.clear();
+		for (auto& dia : group.dias) {
+			if (dia.second.size() == 1)
+				continue;
+			dia.second.sort([](const dia_group& i, const dia_group& j)->bool {
+				return i.base->_seq < j.base->_seq;
+			});
+		}
+		g_dia_deq.clear();
 	}
 	m_vt.Reset();
 	return group;

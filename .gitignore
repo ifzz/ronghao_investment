@@ -1,30 +1,21 @@
 ss_util/.svn
 strategy_server/.svn
-ronghao_library/radar/.svn
-ronghao_library/cxx_inc/.svn
-ronghao_library/analyse_plugins/.svn
-ronghao_library/DiagramServer/.svn
-ronghao_library/so/.svn
-ronghao_library/ClientMgr/.svn
-ronghao_library/hh_TDFAPI/.svn
-ronghao_library/.svn
-ronghao_library/client_mgr/.svn
-ronghao_library/application/.svn
-ronghao_library/hh_server/.svn
-ronghao_library/stock_inc/.svn
 test_child/.svn
 include/.svn
 runtime/.svn
-
-ronghao_library/radar/log_files
-ronghao_library/DiagramServer/log_files
-ronghao_library/client_mgr/log_files
-ronghao_library/application/domain/log_files
-ronghao_library/hh_server/log_files
+strategy_library/libfive_minute_kline_1/.svn/
+ver2/.svn
 
 runtime/strategy_server/log_files/
 runtime/history_md_server/log_files/
 runtime/strategy_proxy/log_files/
+ver2/runtime/stock/radar/log_files
+ver2/runtime/stock/DiagramServer/log_files
+ver2/runtime/stock/ClientMgr/log_files
+ver2/runtime/application/domain/log_files
+
+ver2/runtime/strategy
+runtime/strategy_server/database_import/
 
 ss_util/Debug/DiagramDataFactory.d
 ss_util/Debug/data_mgr.d
@@ -41,6 +32,7 @@ strategy_library/strategy_demo4/Debug/strategy_demo4.d
 strategy_library/strategy_demo2/Debug/strategy_demo2.d
 strategy_library/libfive_minute_kline_1/Debug/five_minute_kline_1.d
 strategy_library/strategy_demo3/Debug/strategy_demo3.d
+strategy_library/twistbi560/Debug/twistbi560.d
 
 ss_util/Debug/data_mgr.o
 ss_util/Debug/DiagramDataFactory.o
@@ -57,3 +49,4 @@ strategy_library/strategy_demo4/Debug/strategy_demo4.o
 strategy_library/strategy_demo2/Debug/strategy_demo2.o
 strategy_library/libfive_minute_kline_1/Debug/five_minute_kline_1.o
 strategy_library/strategy_demo3/Debug/strategy_demo3.o
+strategy_library/twistbi560/Debug/twistbi560.o

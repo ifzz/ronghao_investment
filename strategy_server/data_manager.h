@@ -1,5 +1,13 @@
 #pragma once
 
+#include "rhafx.h"
+extern stg_config g_conf;
+
+enum STRATEGY_OPERA {
+	OPERA_LOAD = 0,
+	OPERA_UNLOAD,
+};
+
 class data_manager;
 class file_receiver : public E15_HttpClient {
 public:
@@ -32,10 +40,10 @@ public:
 	int connect_data_server();
 	void terminate_connect();
 
-	int request_subscribe_by_id(E15_StringArray& sa, int start, int end, int interval);
-	int request_subscribe_all();
-	int request_unsubscribe_by_id(E15_StringArray& sa);
-	int request_unsubscribe_all();
+	void request_subscribe_by_id(E15_StringArray& sa, int start, int end, int interval);
+	void request_subscribe_all();
+	void request_unsubscribe_by_id(E15_StringArray& sa);
+	void request_unsubscribe_all();
 
 	void send_instruction(const std::string& ins_id, const order_instruction& oi);
 	void load_strategy(const std::vector<std::string>& args);
@@ -59,9 +67,12 @@ public:
 #endif
 
 private:
-	std::mutex m_mtx_for_trade_request;
-	E15_Id m_proxy_id, m_dia_id, m_client_id;
-	std::map<std::string, E15_Id> m_role_id;
+	void send_sub_req(E15_ServerCmd& cmd, E15_String& s);
+
+private:
+	E15_Id m_proxy_id;
+	std::list<E15_Id> m_client_id;
+	std::map<std::string, std::list<E15_Id>> m_server_id;
 	strategy_manager *m_data_mgr;
 	file_receiver *m_file_receiver;
 };

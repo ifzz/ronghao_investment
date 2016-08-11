@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "strategy_manager.h"
 
 E15_Log g_log;		//整个策略框架共用同一个日志
 E15_Socket g_socket;
@@ -35,8 +35,10 @@ bool processor::load_share_for_produce(void *handle, const std::string& l, const
 	m_strategy = create_strategy();
 	sb_impl *impl = static_cast<sb_impl*>(m_strategy->m_obj);
 	impl->m_mgr_ptr = m_mgr_ptr;
-	m_strategy->read_config(c.c_str());		//读配置
-	m_strategy->init();		//初始化
+	impl->m_stg_id = 0;
+	impl->m_src_id = 0;
+	impl->read_config(c.c_str());		//读配置
+	impl->on_init();		//初始化
 	print_thread_safe(g_log, "[strategy manager] create strategy instance with "
 			"library name `%s` successfully!\n", l.c_str());
 	return true;
@@ -89,9 +91,13 @@ bool processor::create_child_for_test(const std::string& l, const std::string& c
 		m_seria.write(m_wr_fifo, crx::COMP_ZIP);
 		m_seria.reset();
 
+		uint32_t stg_id = 0;
+		uint16_t src_id = 0;
 		cmd = Stock_Msg_DiagramInfo;
 		m_seria.insert("cmd", (const char*)&cmd, sizeof(cmd));
 		m_seria.insert("data", diagram_info->c_str(), diagram_info->Length());
+		m_seria.insert("stg_id", (const char*)&stg_id, sizeof(uint32_t));
+		m_seria.insert("src_id", (const char*)&src_id, sizeof(uint16_t));
 		m_seria.write(m_wr_fifo, crx::COMP_ZIP);
 		m_seria.reset();
 		print_thread_safe(g_log, "父进程(%d)发送合约列表(bytes=%d)和指标描述信息(bytes=%d)完毕！\n",
@@ -119,7 +125,7 @@ void strategy_manager::child_crash(pid_t pid) {
 		for (auto& c : l.second.ini_map) {
 			if (c.second->get_pid() == pid) {
 				std::vector<std::string> args = {l.first, c.first};
-				unload_strategy(args);
+				unload_strategy(args, false);
 			}
 		}
 	}
@@ -156,20 +162,17 @@ bool strategy_manager::init(int argc, char *argv[]) {
 
 void strategy_manager::destroy() {
 	//首先卸载所有的策略
-	flush();
 	std::vector<std::string> dir_vec;
 	m_xml.for_each_attr([&](const char *name, const char *value, void *args)->void {
 		if (atoi(value)) {
 			dir_vec.push_back(name);
-			unload_strategy(dir_vec);
+			unload_strategy(dir_vec, false);
 			dir_vec.clear();
 		}
 	}, nullptr);
 
-	if (g_conf.sub_all) {
+	if (g_conf.sub_all)
 		m_data_recv->request_unsubscribe_all();
-		printf("已经退订所有合约!\n");
-	}
 
 	m_statis_stop = true;
 	m_statis_th.join();
@@ -184,12 +187,25 @@ void strategy_manager::destroy() {
 	remove(FIFO_PREFIX);
 }
 
+unsigned int strategy_manager::get_usable_stg_id() {
+	unsigned int stg_id;
+	auto it = std::find(m_stg_runtime_id.begin(), m_stg_runtime_id.end(), 0);
+	if (m_stg_runtime_id.end() != it) {
+		*it = 1;
+		stg_id = it-m_stg_runtime_id.begin();
+	} else {
+		stg_id = m_stg_runtime_id.size();
+		m_stg_runtime_id.push_back(1);
+	}
+	return stg_id;
+}
+
 void strategy_manager::auto_load_stg() {
 	std::vector<std::string> str_vec;
 	m_xml.for_each_attr([&](const char *name, const char *value, void *args)->void {
 		if (atoi(value)) {
 			str_vec.push_back(name);
-			load_strategy(str_vec);
+			load_strategy(str_vec, false);
 			str_vec.clear();
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		}
@@ -212,10 +228,8 @@ void strategy_manager::data_dispatch(int cmd, E15_String *&data) {
 		data = nullptr;
 		printf("strategy_manager[%d] 收到收到指标描述信息 bytes=%ld\n", getpid(), m_diagram_info->Length());
 
-		if (g_conf.sub_all) {
+		if (g_conf.sub_all)
 			m_data_recv->request_subscribe_all();
-			printf("[stg %d]开始订阅所有合约\n", getpid());
-		}
 		auto_load_stg();
 		break;
 	}
@@ -260,6 +274,7 @@ void strategy_manager::for_trade(int fd, void *args) {
 	if (1 == ret || -1 == ret) {
 		this_ptr->unregister_rfifo(fd);
 		print_thread_safe(g_log, "读子进程发送的请求交易指令失败 ret = %d\n", ret);
+		return;
 	}
 
 	this_ptr->m_fd_des[fd]->for_each_map([&](std::map<std::string, std::string>& m, void *args)->void {
@@ -391,7 +406,7 @@ std::shared_ptr<processor> strategy_manager::create_processor(const std::string&
 	return p;
 }
 
-void strategy_manager::load_strategy(const std::vector<std::string>& args) {
+void strategy_manager::load_strategy(const std::vector<std::string>& args, bool record /*= true*/) {
 	if (args.size() != 1)
 		return;
 
@@ -406,7 +421,8 @@ void strategy_manager::load_strategy(const std::vector<std::string>& args) {
 	auto p = create_processor(l, c);
 	if (!p)
 		return;
-	m_xml.set_attribute(args[0].c_str(), "1", false);
+	if (record)
+		m_xml.set_attribute(args[0].c_str(), "1", false);
 
 	if (g_conf.sub_all)
 		handle_all_sub(p, c);
@@ -441,7 +457,7 @@ void strategy_manager::handle_ins_unsub(std::shared_ptr<processor>& pro) {
 		m_data_recv->request_unsubscribe_by_id(sa);
 }
 
-void strategy_manager::unload_strategy(const std::vector<std::string>& args) {
+void strategy_manager::unload_strategy(const std::vector<std::string>& args, bool record /*= true*/) {
 	if (args.size() != 1)
 		return;
 
@@ -454,7 +470,8 @@ void strategy_manager::unload_strategy(const std::vector<std::string>& args) {
 		return;
 
 	auto pro = destroy_processor(l, c);
-	m_xml.set_attribute(args[0].c_str(), "0", false);
+	if (record)
+		m_xml.set_attribute(args[0].c_str(), "0", false);
 
 	if (g_conf.sub_all)
 		return;
@@ -518,6 +535,16 @@ void strategy_manager::print_stg(const std::set<std::string>& dir_set) {
 	std::cout.flush();
 }
 
+void strategy_manager::test(const std::vector<std::string>& args) {
+	int sec = atoi(args[0].c_str());
+	if (sec <= 0)
+		return;
+
+	m_test_exist_data = true;
+	std::this_thread::sleep_for(std::chrono::seconds(sec));
+	m_test_exist_data = false;
+}
+
 int main(int argc, char *argv[]) {
 	g_mgr.add_cmd("load", "l", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.load_strategy(args);
@@ -538,5 +565,9 @@ int main(int argc, char *argv[]) {
 	g_mgr.add_cmd("flush", "f", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.flush();
 	}, "flush config");
+
+	g_mgr.add_cmd("test", "t", [&](const std::vector<std::string>& args, crx::console *c)->void {
+		g_mgr.test(args);
+	}, "test if exist data");
 	return g_mgr.run(argc, argv);
 }

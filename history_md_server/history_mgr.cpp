@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "history_mgr.h"
 
 static E15_Log g_log;		//历史行情共用同一个日志
 static std::mutex g_mtx_for_screen;
@@ -12,7 +12,7 @@ void print_thread_safe(const char *format, ...) {
 		g_log.PrintfV(0, format, args);
 	}
 	va_end(args);
-	if (PRINT_SCREEN) {
+	if (true) {
 		va_start(args, format);
 		{
 			std::unique_lock<std::mutex> lck(g_mtx_for_screen);
@@ -36,9 +36,8 @@ void data_parser::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 	gettimeofday(&tv, nullptr);
 	tm *timeinfo = localtime(&tv.tv_sec);
 	strftime(time_buffer, sizeof(time_buffer), "%H%M%S", timeinfo);
-	print_thread_safe("[time=%s.%ld]发送一次tick数据\n", time_buffer, tv.tv_usec/1000);
+//	print_thread_safe("[time=%s.%ld]发送一次tick数据\n", time_buffer, tv.tv_usec/1000);
 
-#if 0
 	//只需要转发tick级行情给实时行情服务器就可以了
 	if (m_depth_list.empty()) {
 		if (m_current_date > m_end) {
@@ -47,6 +46,11 @@ void data_parser::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 		}
 
 		m_mgr_ptr->load_depth(m_ins_id.c_str(), this, m_current_date);
+		if (m_depth_list.empty()) {
+			print_thread_safe("不存在指定日期（%d）的tick级数据！\n", m_current_date);
+			m_mgr_ptr->notify_over(m_ins_id);
+			return;
+		}
 		print_thread_safe("当前合约（id=%s）指定日期%d的所有tick级行情加载完成！\n", m_ins_id.c_str(), m_current_date);
 		m_current_date++;
 	}
@@ -57,11 +61,10 @@ void data_parser::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 	history_buf->Memcpy(m_ins_id.c_str(), m_ins_id.length());
 	history_buf->Resize(16, 0);
 	history_buf->Memcat((const char*)depth.get(), sizeof(MarketDepthData));
-	print_thread_safe("[time=%s.%ld]发送一次tick数据 depth=%p, len=%d, day=%d, time=%d\n", time_buffer, tv.tv_usec/1000,
-			history_buf->c_str(), history_buf->Length(), depth->base.nActionDay, depth->base.nTime);
-	m_mgr_ptr->send_history(history_buf, Stock_Msg_DepthMarket);
+//	print_thread_safe("[time=%s.%ld]发送一次tick数据 depth=%p, len=%d, day=%d, time=%d\n", time_buffer, tv.tv_usec/1000,
+//			history_buf->c_str(), history_buf->Length(), depth->base.nActionDay, depth->base.nTime);
+	m_mgr_ptr->send_history(m_ins_id, history_buf, Stock_Msg_DepthMarket);
 	m_depth_list.pop_front();
-#endif
 }
 
 int data_parser::get_depth(void * obj,int market,const char * id,
@@ -79,12 +82,13 @@ int data_parser::get_depth(void * obj,int market,const char * id,
 bool history_mgr::init(int argc, char *argv[]) {
 	//全局日志初始化
 	g_log.Init("history_md", 100);
-	print_thread_safe("[%s#%s]Complete the initialization of the global log object……\n", __FILE__, __FUNCTION__);
+	print_thread_safe("Complete the initialization of the global log object……\n");
 
 	m_timer_th.start();
 	m_thread_pool.start(10);
 	m_trans->start();
 	m_history_store = Create_E15_HistoryStore();
+	m_history_store->Init();
 	return true;
 }
 
@@ -93,7 +97,7 @@ void history_mgr::destroy() {
 	m_trans->stop();
 	m_thread_pool.stop();
 	m_timer_th.stop();
-	print_thread_safe("[%s#%s]history manager resource released!\n", __FILE__, __FUNCTION__);
+	print_thread_safe("history manager resource released!\n");
 }
 
 void history_mgr::timer_callback(int fd, void *args) {
