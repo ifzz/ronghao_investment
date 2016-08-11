@@ -789,7 +789,7 @@ int DiagramDataFactory::OnTag(MarketDepthData * depth,int mode,int data_index,in
 
 	if( mode == 0 && data->tags[tag_index])
 	{
-		data->tags[tag_index]->base._date = 0; //做一个无效标记即可
+//		data->tags[tag_index]->base._date = 0; //做一个无效标记即可
 		insert_package_queue(data, data_index, tag_index, mode);
 		return 1;
 	}

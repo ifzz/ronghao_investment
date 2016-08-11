@@ -212,25 +212,45 @@ void strategy_manager::auto_load_stg() {
 	}, nullptr);
 }
 
+void strategy_manager::sub_and_load(bool is_resub) {
+	if (g_conf.sub_all) {		//订阅所有行情时不管是否需要重新订阅
+		m_data_recv->request_subscribe_all();
+	} else if (is_resub) {
+		for (auto& l : m_libraries)
+			for (auto& c : l.second.ini_map)
+				handle_cus_sub(c.second, c.first, true);
+		print_thread_safe(g_log, "[sub_and_load]收到新的指标描述信息，已重新订阅所有策略需要的合约！\n");
+	}
+
+	if (!is_resub)		//首次订阅时需要自动加载既定策略
+		auto_load_stg();
+}
+
 void strategy_manager::data_dispatch(int cmd, E15_String *&data) {
 	switch (cmd) {
 	case Stock_Msg_InstrumentList: {
+		if (m_ins_list)
+			delete m_ins_list;
+
 		parse_instrument_list(data->c_str(), data->Length());
 		m_ins_list = data;
 		data = nullptr;		//接管数据
-		printf("strategy_manager[%d] 收到合约列表 bytes=%ld\n", getpid(), m_ins_list->Length());
+		print_thread_safe(g_log, "strategy_manager[%d] 收到合约列表 bytes=%ld\n", getpid(), m_ins_list->Length());
 		break;
 	}
 
 	case Stock_Msg_DiagramInfo: {			//diagram description info
+		bool is_resub = false;
+		if (m_diagram_info) {		//重新订阅
+			delete m_diagram_info;
+			is_resub = true;
+		}
+
 		parse_diagram_info(data->c_str(), data->Length());
 		m_diagram_info = data;
 		data = nullptr;
-		printf("strategy_manager[%d] 收到收到指标描述信息 bytes=%ld\n", getpid(), m_diagram_info->Length());
-
-		if (g_conf.sub_all)
-			m_data_recv->request_subscribe_all();
-		auto_load_stg();
+		print_thread_safe(g_log, "strategy_manager[%d] 收到收到指标描述信息 bytes=%ld\n", getpid(), m_diagram_info->Length());
+		sub_and_load(is_resub);
 		break;
 	}
 
@@ -343,10 +363,9 @@ void strategy_manager::handle_all_sub(std::shared_ptr<processor>& p, const std::
 		for (auto& ins : crx::split(ins_id, ";"))
 			p->register_type(m_ins_info[ins].type);
 	}
-	m_threads.register_processor(p);
 }
 
-void strategy_manager::handle_cus_sub(std::shared_ptr<processor>& p, const std::string& c) {
+void strategy_manager::handle_cus_sub(std::shared_ptr<processor>& p, const std::string& c, bool is_resub) {
 	//在配置中存在关注的合约，若还没订阅则需要订阅
 	E15_Ini ini;
 	ini.Read(c.c_str());
@@ -361,6 +380,11 @@ void strategy_manager::handle_cus_sub(std::shared_ptr<processor>& p, const std::
 	auto ins_vec = crx::split(ins_id, ";");
 	E15_StringArray sa;
 	for (auto& ins : ins_vec) {
+		if (is_resub) {
+			sa.Add(ins.data(), ins.size());
+			continue;
+		}
+
 		if (!m_ins_info[ins].subscribe_cnt)
 			sa.Add(ins.data(), ins.size());
 		m_ins_info[ins].subscribe_cnt++;
@@ -369,7 +393,6 @@ void strategy_manager::handle_cus_sub(std::shared_ptr<processor>& p, const std::
 	if (sa.Size())
 		m_data_recv->request_subscribe_by_id(sa, start, end, interval);
 	p->store_sub_ins(ins_vec);
-	m_threads.register_processor(p);
 }
 
 std::shared_ptr<processor> strategy_manager::create_processor(const std::string& l, const std::string& c) {
@@ -427,7 +450,8 @@ void strategy_manager::load_strategy(const std::vector<std::string>& args, bool 
 	if (g_conf.sub_all)
 		handle_all_sub(p, c);
 	else
-		handle_cus_sub(p, c);
+		handle_cus_sub(p, c, false);
+	m_threads.register_processor(p);
 }
 
 std::shared_ptr<processor> strategy_manager::destroy_processor(const std::string& l, const std::string& c) {

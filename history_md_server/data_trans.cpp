@@ -63,7 +63,7 @@ void data_trans::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_Server
 	case Stock_Msg_SubscribeById:
 	case Stock_Msg_UnSubscribeById:
 		printf("收到订阅/退订请求 id=[%x:%x] cmd=%d data=%s！\n", info->id.h, info->id.l, cmd->cmd, data->c_str());
-		handle_subscribe(cmd->cmd, data);
+		handle_subscribe(cmd->cmd, data, info->name);
 		break;
 
 	default:
@@ -71,7 +71,7 @@ void data_trans::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_Server
 	}
 }
 
-int data_trans::handle_subscribe(int cmd, E15_String *&data) {
+int data_trans::handle_subscribe(int cmd, E15_String *&data, const std::string& name) {
 	E15_ValueTable vt;
 	vt.Import(data->c_str(), data->Length());
 	E15_Value *v = vt.ValueS("id_list");
@@ -95,10 +95,19 @@ int data_trans::handle_subscribe(int cmd, E15_String *&data) {
 
 	for (unsigned long i = 0; i < sa->Size(); ++i) {
 		E15_String *s = sa->At(i);
-		if (Stock_Msg_UnSubscribeById == cmd)		//取消订阅
+		if (Stock_Msg_UnSubscribeById == cmd) {		//取消订阅
+			if (m_node_sub[name].end() == m_node_sub[name].find(s->c_str()))
+				continue;
+
 			m_mgr_ptr->history_unsubscribe(s->c_str());
-		else		//Stock_Msg_SubscribeById == cmd
+			m_node_sub[name].erase(s->c_str());
+		} else {		//Stock_Msg_SubscribeById == cmd
+			if (m_node_sub[name].end() != m_node_sub[name].find(s->c_str()))
+				continue;
+
 			m_mgr_ptr->history_subscribe(s->c_str(), start, end, interval);
+			m_node_sub[name].insert(s->c_str());
+		}
 	}
 	return sa->Size();
 }

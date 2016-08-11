@@ -409,7 +409,12 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 			if (dia.second.size() == 1)
 				continue;
 			dia.second.sort([](const dia_group& i, const dia_group& j)->bool {
-				return i.base->_seq < j.base->_seq;
+				wd_seq iseq, jseq;
+				iseq.date = i.base->_date;
+				iseq.seq = i.base->_seq;
+				jseq.date = j.base->_date;
+				jseq.seq = j.base->_seq;
+				return iseq.vir_seq < jseq.vir_seq;
 			});
 		}
 		g_dia_deq.clear();

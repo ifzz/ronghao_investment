@@ -69,6 +69,14 @@ struct dia_data_tag {
 	:type_index(-1) {}
 };
 
+union wd_seq {
+	struct {
+		int32_t seq;
+		int32_t date;
+	};
+	int64_t vir_seq;
+};
+
 struct dia_group {
 	MarketAnalyseDataBase *base;
 	MarketAnalyseKline *ext;

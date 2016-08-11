@@ -22,13 +22,14 @@ public:
 	virtual void OnNotify(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data) {}
 
 private:
-	int handle_subscribe(int cmd, E15_String *&data);
+	int handle_subscribe(int cmd, E15_String *&data, const std::string& name);
 	void send_ins_info(const char *ins, E15_Id& id);
 
 private:
 	history_mgr *m_mgr_ptr;
 	std::string m_stg_role, m_dia_role;
 	E15_Id m_stg_id, m_dia_id;
+	std::map<std::string, std::set<std::string>> m_node_sub;
 
 	int m_market;
 	E15_ValueTable m_instrument_list;

@@ -13,6 +13,7 @@ enum STG_STATUS {
 };
 
 struct bikavg {
+	unsigned int date;
 	unsigned int seq;
 	__int64 bi;
 	__int64 kavg60;
@@ -20,7 +21,8 @@ struct bikavg {
 
 struct ins_data {
 	STG_STATUS sts;
-	unsigned int bi_seq;		//只取最新的seq，来的是旧的简单丢弃
+	wd_seq bi_seq;		//只取最新的seq，来的是旧的简单丢弃
+	wd_seq kline_seq;		//记录最新的K线
 	__int64 last_ding, last_di, last_macd_diff;
 	char kavg60_loca;		//60均线的位置，1表示60均线在顶的上面，-1表示在底的下面
 	std::list<bikavg> bi_ding;
@@ -29,10 +31,13 @@ struct ins_data {
 
 	ins_data()
 	:sts(STS_INIT)
-	,bi_seq(0)
 	,last_ding(-1)
 	,last_di(-1)
-	,kavg60_loca(0) {}
+	,last_macd_diff(0)
+	,kavg60_loca(0) {
+		bi_seq.vir_seq = 0;
+		kline_seq.vir_seq = 0;
+	}
 };
 
 class twistbi560 : public strategy_base {

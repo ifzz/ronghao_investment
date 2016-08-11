@@ -92,8 +92,6 @@ public:
 	void unload_strategy(const std::vector<std::string>& args, bool record = true);
 	void data_dispatch(int cmd, E15_String *&data);
 
-
-
 	void child_crash(pid_t pid);
 	void flush();
 	void show_all();
@@ -103,6 +101,7 @@ public:
 	void unregister_rfifo(int fd);
 
 private:
+	void sub_and_load(bool is_resub);
 	void auto_load_stg();
 	std::set<std::string> get_stg_dir();
 	void print_stg(const std::set<std::string>& dir_set);
@@ -111,7 +110,7 @@ private:
 	std::shared_ptr<processor> create_processor(const std::string& l, const std::string& c);
 	std::shared_ptr<processor> destroy_processor(const std::string& l, const std::string& c);
 	void handle_all_sub(std::shared_ptr<processor>& p, const std::string& c);
-	void handle_cus_sub(std::shared_ptr<processor>& p, const std::string& c);
+	void handle_cus_sub(std::shared_ptr<processor>& p, const std::string& c, bool is_resub);
 	void handle_ins_unsub(std::shared_ptr<processor>& pro);
 
 	static void for_trade(int fd, void *args);
