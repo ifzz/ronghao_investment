@@ -89,6 +89,8 @@ protected:
 	//在测试环境中接收到以下两个信息时保存原始数据，在创建子进程成功之后立即推送这两者
 	E15_String *m_ins_list, *m_diagram_info;
 
+	unsigned int m_test_seq;
+
 	E15_Zip m_unzip;
 	E15_String m_unzip_buffer;
 	E15_ValueTable m_vt;

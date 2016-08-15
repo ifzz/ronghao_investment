@@ -117,7 +117,6 @@ public:
 	int LoadCacheData(const char * data,unsigned int len,int index ,int block_size);//加载最新缓存数据
 	int LoadCacheTag(const char * data,unsigned int len,int index,int parent_index ,int block_size);//加载最新缓存数据
 
-
 	E15_Lock lock;
 	ContractInfo 		*m_info;
 private:

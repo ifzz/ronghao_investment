@@ -213,7 +213,8 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 
 ss_util::ss_util()
 :m_ins_list(nullptr)
-,m_diagram_info(nullptr) {}
+,m_diagram_info(nullptr)
+,m_test_seq(0) {}
 
 ss_util::~ss_util() {
 	if (m_ins_list)
@@ -373,9 +374,9 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 	group.ins_id = data;
 	*group.depth = *stock->depth;
 
-	E15_ValueTable *dia = m_vt.TableS("dia");
-	if (dia) {
-		dia->each((int (*)(E15_Key * key,E15_Value * info,void *))handle_diagram_item, stock);
+	E15_ValueTable *dia_vt = m_vt.TableS("dia");
+	if (dia_vt) {
+		dia_vt->each((int (*)(E15_Key * key,E15_Value * info,void *))handle_diagram_item, stock);
 		for (auto& raw : g_dia_deq) {
 			dia_group g;
 			g.base = &raw.data->base;
@@ -417,6 +418,23 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 				return iseq.vir_seq < jseq.vir_seq;
 			});
 		}
+
+		if (group.dias.end() != group.dias.find(1)) {		//取12秒K线做测试
+			if (m_test_seq == 0)
+				m_test_seq = group.dias[1].front().base->_seq+10;
+
+			for (auto& dia : group.dias[1]) {
+				if (dia.base->_seq <= m_test_seq) {
+					continue;
+				} else {
+//					dia_vt->Print();
+//					printf("[parse_diagram_group]@@@@@@@@@@ seq = %d\n", dia.base->_seq);
+					assert(dia.base->_seq == m_test_seq+1);
+					m_test_seq++;
+				}
+			}
+		}
+
 		g_dia_deq.clear();
 	}
 	m_vt.Reset();

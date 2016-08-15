@@ -213,6 +213,7 @@ void strategy_manager::auto_load_stg() {
 }
 
 void strategy_manager::sub_and_load(bool is_resub) {
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	if (g_conf.sub_all) {		//订阅所有行情时不管是否需要重新订阅
 		m_data_recv->request_subscribe_all();
 	} else if (is_resub) {
