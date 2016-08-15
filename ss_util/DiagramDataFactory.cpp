@@ -674,19 +674,29 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 	if( h->m_dt->type_index != (unsigned int)index )
 		return 0;
 
+//	if (!strcmp(h->m_dt->class_name, "kline") && !strcmp(h->m_dt->name, "秒") && h->m_dt->param == 12)
+//		m_log.Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u]) state=%d mode=%d\n",h->m_dt->class_name,
+//				h->m_dt->name,h->m_dt->param,base->_date,base->_seq,base->_state, mode);
+
 	h->m_write_flag = 1;
+	DiagramDataItem * pre = 0;
 	if( mode == 1 ) //0 删除，1新增，2修改
 	{
 		DiagramDataItem * tail = h->PeekDataItem(-1);
+
 //		E15_Debug::Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u])\n",h->m_dt->class_name,
 //				h->m_dt->name,h->m_dt->param,base->_date,base->_seq);
 		if( tail )
 		{
+
+
 			if( tail->base._date > base->_date) //新增数据日期太旧，抛弃
 				return 0;
 			if( (tail->base._date == base->_date ) //同一天的数据，新增数据不能比之前数据的序列号小
 					&& ( tail->base._seq >= base->_seq) )
 				return 0;
+
+
 		}
 
 		DiagramDataItem * data = new DiagramDataItem(h->GetTagCount() );
@@ -698,9 +708,17 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 			data->pri->Strcpy(ext_data, h->ext_len);
 		}
 
+		h->m_data->PutTail(data);
+
+		pre = (DiagramDataItem *)data->Pre();
+		if( pre)
+		{
+			pre->base._state = 2;
+			insert_package_queue(pre, index, -1, 2);
+		}
 		insert_package_queue(data, index, -1, mode);
 
-		h->m_data->PutTail(data);
+
 		while (h->m_data->Count() > 2000)
 			h->m_data->RemoveHead(0);
 
@@ -878,6 +896,7 @@ int factory_on_data(DataDescription * desc, DiagramDataFactory * factory)
 
 void DiagramDataFactory::Init(E15_Queue * q)
 {
+	m_log.Init("test", 1000);
 	q->each( (int (*)(E15_Object * ,void *) ) factory_on_data , this);
 }
 

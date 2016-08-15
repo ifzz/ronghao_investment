@@ -46,8 +46,11 @@ void turtle_rule::execute(depth_dia_group& group) {
 	if (group.dias.end() == group.dias.find(m_15minkline))
 		return;
 
-	for (auto& dia : group.dias[m_15minkline])
+	for (auto& dia : group.dias[m_15minkline]) {
+//		print_thread_safe("[execute 当前关注K线] date=%d seq=%d state=%d\n ", dia.base->_date,
+//				dia.base->_seq, dia.base->_state);
 		sts_trans(group.ins_id, group.depth.get(), dia);
+	}
 }
 
 void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data) {
@@ -76,6 +79,7 @@ void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data) {
 	//新的K线
 	data.kline20.push_back({dia.base->_date, dia.base->_seq, kavg50->_value, kavg250->_value,
 		dia.ext->max_item.price, dia.ext->min_item.price});
+	data.pdc = dia.ext->close_item.price;
 	data.last_klseq.date = dia.base->_date;
 	data.last_klseq.seq = dia.base->_seq;
 	print_thread_safe("[con_open_20kline]得到一根已完成的K线！date=%d seq=%d 最高价=%d 最低价=%d\n",
@@ -129,10 +133,6 @@ void turtle_rule::check_kavg_loca(ins_data& data) {
 }
 
 void turtle_rule::try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data) {
-	if (dia.base->_state == 2)
-		print_thread_safe("@@@@@@@@@@ date=%d seq=%d last_seq=%d state=%d\n",
-				dia.base->_date, dia.base->_seq, data.last_klseq.seq, dia.base->_state);
-
 	wd_seq uni_seq;
 	uni_seq.date = dia.base->_date;
 	uni_seq.seq = dia.base->_seq;
@@ -215,8 +215,8 @@ void turtle_rule::try_close_position(const std::string& id, MarketDepthData *dep
 	__int64 N = TR;
 	if (data.pdn != -1)
 		N = (19*data.pdn+TR)/20;
-//	print_thread_safe("[try_close_position]尝试平仓：最高价=%d 最低价=%d PDC(上一根K线的收盘价)=%d "
-//			"TR(实际范围)=%d PDN=%d N=%d\n", h, l, data.pdc, TR, data.pdn, N);
+	print_thread_safe("[try_close_position]尝试平仓：最高价=%d 最低价=%d PDC(上一根K线的收盘价)=%d "
+			"TR(实际范围)=%d PDN=%d N=%d\n", h, l, data.pdc, TR, data.pdn, N);
 
 	bool close = false;
 	if (1 == data.kavg_loca) {		//平多仓
@@ -267,6 +267,7 @@ void turtle_rule::try_close_position(const std::string& id, MarketDepthData *dep
 	if (dia.base->_state == 2) {
 		//当前K线已完成，记录PDN——前一根K线完成时的N值
 		data.pdn = N;
+		data.pdc = dia.ext->close_item.price;
 		data.last_klseq.date = dia.base->_date;
 		data.last_klseq.seq = dia.base->_seq;
 		print_thread_safe("[try_close_position]平仓过程中取到一根已完成的K线，记录pdn=%d, date=%d, seq=%d\n",

@@ -122,6 +122,8 @@ public:
 private:
 	E15_Queue * 	m_data;
 
+	E15_Log m_log;
+
 	int OnData(MarketDepthData * depth,int mode,int index,MarketAnalyseDataBase * base,const char * ext_data,int len); 	//网络实时发送的数据
 	int OnTag(MarketDepthData * depth,int mode,int data_index,int tag_index,MarketAnalyseTagBase * base,const char * ext_data,int len);		//网络实时发送的数据
 
@@ -178,6 +180,7 @@ private:
 
 	unsigned int m_cache_date;
 	unsigned int m_cache_seq;
+
 
 
 public:

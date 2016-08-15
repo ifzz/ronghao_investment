@@ -383,15 +383,6 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 			g.ext = (MarketAnalyseKline*)raw.data->pri->c_str();
 			g.mode = raw.mode;
 
-//			if (item.data->tags[0] && !strcmp("ni1609", data) && item.data_index == 1)
-//				printf("tag 0 = %p\n", item.data->tags[0]);
-
-//			if (raw.data_index == 1 && raw.data->base._seq == 18) {
-//				if (raw.tag_mode.end() != raw.tag_mode.find(3) && raw.tag_mode[3] == 0) {
-//					printf("[parse_diagram_group]当前12秒K线，第18个序列包收到一个twistbi被删除的tag\n");
-//				}
-//			}
-
 			for (int i = 0; i < raw.data->tag_cnt; ++i) {
 				if (raw.data->tags[i]) {		//tag存在，删除操作也要通知策略
 					g.tags.push_back(&raw.data->tags[i]->base);
@@ -418,23 +409,6 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 				return iseq.vir_seq < jseq.vir_seq;
 			});
 		}
-
-		if (group.dias.end() != group.dias.find(1)) {		//取12秒K线做测试
-			if (m_test_seq == 0)
-				m_test_seq = group.dias[1].front().base->_seq+10;
-
-			for (auto& dia : group.dias[1]) {
-				if (dia.base->_seq <= m_test_seq) {
-					continue;
-				} else {
-//					dia_vt->Print();
-//					printf("[parse_diagram_group]@@@@@@@@@@ seq = %d\n", dia.base->_seq);
-					assert(dia.base->_seq == m_test_seq+1);
-					m_test_seq++;
-				}
-			}
-		}
-
 		g_dia_deq.clear();
 	}
 	m_vt.Reset();

@@ -34,6 +34,7 @@ strategy_library/libfive_minute_kline_1/Debug/five_minute_kline_1.d
 strategy_library/strategy_demo3/Debug/strategy_demo3.d
 strategy_library/twistbi560/Debug/twistbi560.d
 strategy_library/turtle_rule/Debug/turtle_rule.d
+strategy_library/rollbbtall/Debug/rollbbtall.d
 
 ss_util/Debug/data_mgr.o
 ss_util/Debug/DiagramDataFactory.o
@@ -52,3 +53,4 @@ strategy_library/libfive_minute_kline_1/Debug/five_minute_kline_1.o
 strategy_library/strategy_demo3/Debug/strategy_demo3.o
 strategy_library/twistbi560/Debug/twistbi560.o
 strategy_library/turtle_rule/Debug/turtle_rule.o
+strategy_library/rollbbtall/Debug/rollbbtall.o
