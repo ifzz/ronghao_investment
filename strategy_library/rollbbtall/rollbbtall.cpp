@@ -45,14 +45,6 @@ bool rollbbtall::seq_outdate(dia_group& dia, ins_data& data) {
 	return false;
 }
 
-void rollbbtall::execute(depth_dia_group& group) {
-	if (group.dias.end() == group.dias.find(m_kline_idx))
-		return;
-
-	for (auto& dia : group.dias[m_kline_idx])
-		sts_trans(group.ins_id, group.depth.get(), dia);
-}
-
 void rollbbtall::cons_base_price(dia_group& dia, ins_data& data, bool open) {
 	if (dia.base->_state != 2)		//初始化时构造的反转/突破价格需要用到上一根已完成的K线
 		return;
@@ -136,7 +128,7 @@ void rollbbtall::try_close_position(const std::string& id, MarketDepthData *dept
 		return;
 
 	if (STS_GT_OB_SELL == data.sts && dia.ext->max_item.price < data.rb_sell_price) {
-		//最新价进一步跌破反转卖出价构成的支撑线后，反手做空
+		//日内最高价进一步跌破反转卖出价构成的支撑线后，反手做空
 		print_thread_safe("[try_close_position date=%d seq=%d]在平（多）仓过程中，盘中价格回落，日内最高价（%d）进一步"
 				"跌破反转卖出价（%d）构成的支撑线，反手做空！\n", dia.base->_date, dia.base->_seq, dia.ext->max_item.price,
 				data.rb_sell_price);
@@ -147,7 +139,7 @@ void rollbbtall::try_close_position(const std::string& id, MarketDepthData *dept
 	}
 
 	if (STS_LT_OB_BUY == data.sts && dia.ext->min_item.price > data.rb_buy_price) {
-		//最新价进一步超过反转买入价构成的阻力线后，反手做多
+		//日内最低价进一步超过反转买入价构成的阻力线后，反手做多
 		print_thread_safe("[try_close_position date=%d seq=%d]在平（空）仓过程中，盘中价格反弹，日内最低价（%d）进一步"
 				"超过反转买入价（%d）构成的阻力线，反手做多！\n", dia.base->_date, dia.base->_seq, dia.ext->min_item.price,
 				data.rb_buy_price);
@@ -167,6 +159,14 @@ void rollbbtall::try_close_position(const std::string& id, MarketDepthData *dept
 		else		//STS_LT_OB_BUY == sts
 			data.sts = STS_OPEN_SELL;
 	}
+}
+
+void rollbbtall::execute(depth_dia_group& group) {
+	if (group.dias.end() == group.dias.find(m_kline_idx))
+		return;
+
+	for (auto& dia : group.dias[m_kline_idx])
+		sts_trans(group.ins_id, group.depth.get(), dia);
 }
 
 void rollbbtall::sts_trans(const std::string& id, MarketDepthData *depth, dia_group& dia) {
