@@ -674,9 +674,10 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 	if( h->m_dt->type_index != (unsigned int)index )
 		return 0;
 
-//	if (!strcmp(h->m_dt->class_name, "kline") && !strcmp(h->m_dt->name, "秒") && h->m_dt->param == 12)
+//	if (!strcmp(h->m_dt->class_name, "kline") && !strcmp(h->m_dt->name, "分钟") && h->m_dt->param == 5) {
 //		m_log.Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u]) state=%d mode=%d\n",h->m_dt->class_name,
 //				h->m_dt->name,h->m_dt->param,base->_date,base->_seq,base->_state, mode);
+//	}
 
 	h->m_write_flag = 1;
 	DiagramDataItem * pre = 0;
@@ -688,15 +689,11 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 //				h->m_dt->name,h->m_dt->param,base->_date,base->_seq);
 		if( tail )
 		{
-
-
 			if( tail->base._date > base->_date) //新增数据日期太旧，抛弃
 				return 0;
 			if( (tail->base._date == base->_date ) //同一天的数据，新增数据不能比之前数据的序列号小
 					&& ( tail->base._seq >= base->_seq) )
 				return 0;
-
-
 		}
 
 		DiagramDataItem * data = new DiagramDataItem(h->GetTagCount() );
