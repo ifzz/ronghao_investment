@@ -1,11 +1,14 @@
 #include "strategy_demo3.h"
 
+static wd_seq last_tseq;
+
 std::shared_ptr<strategy_base> create_strategy() {
 	return std::make_shared<strategy_demo3>();
 }
 
 void strategy_demo3::init() {
 	m_12skline_index = m_type_map["12秒kline"].type_index;
+	last_tseq.vir_seq = 0;
 }
 
 void strategy_demo3::execute_trade(depth_dia_group& group, TRADE_DIRECTION direction, int price) {
@@ -40,6 +43,13 @@ void strategy_demo3::execute(depth_dia_group& group) {
 
 	auto& ins = group.ins_id;
 	auto& depth = group.depth;
+
+	wd_seq uni_seq;
+	uni_seq.date = depth->base.nActionDay;
+	uni_seq.seq = depth->base.nTime;
+	if (uni_seq.vir_seq <= last_tseq.vir_seq)		//过时的tick行情直接扔掉
+		return;
+
 	if (m_ins_deal.end() != m_ins_deal.find(ins)) {
 		int64_t tick = m_ins_info[group.ins_id].price_tick;
 		if (abs(depth->base.bid_ask.Ask-depth->base.bid_ask.Bid) >= 5*tick) {
@@ -57,4 +67,6 @@ void strategy_demo3::execute(depth_dia_group& group) {
 		 }
 	 }
 	m_ins_deal[ins] = depth->base.nPrice;
+	last_tseq.date = depth->base.nActionDay;
+	last_tseq.seq = depth->base.nTime;
  }

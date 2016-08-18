@@ -23,7 +23,7 @@ public:
 
 private:
 	int handle_subscribe(int cmd, E15_String *&data, const std::string& name);
-	void send_ins_info(const char *ins, E15_Id& id);
+	void send_ins_info(std::vector<std::string>& ins_vec, E15_Id& id);
 
 private:
 	history_mgr *m_mgr_ptr;
@@ -32,6 +32,7 @@ private:
 	std::map<std::string, std::set<std::string>> m_node_sub;
 
 	int m_market;
+	std::vector<std::string> m_ins_vec;
 	E15_ValueTable m_instrument_list;
 	E15_String m_instrument_buffer;
 	E15_Zip m_zip;

@@ -6,6 +6,7 @@ E15_Socket g_socket;
 data_trans::data_trans(history_mgr *mgr_ptr)
 :m_mgr_ptr(mgr_ptr)
 ,m_market(-1) {
+	m_ins_vec = {"ni1609", "cu1701"};
 }
 
 int data_trans::start() {
@@ -45,7 +46,7 @@ int data_trans::OnOpen(E15_ServerInfo * info,E15_String *& json) {
 
 	if (!strcmp(info->role, m_dia_role.c_str())) {
 		m_dia_id = info->id;
-		send_ins_info("ni1609", m_dia_id);
+		send_ins_info(m_ins_vec, m_dia_id);
 		print_thread_safe("[history_md]连接到指标生成服务器(%x:%x, name=%s, role=%s)\n", info->id.h,
 				info->id.l, info->name, info->role);
 	}
@@ -112,16 +113,17 @@ int data_trans::handle_subscribe(int cmd, E15_String *&data, const std::string& 
 	return sa->Size();
 }
 
-void data_trans::send_ins_info(const char *ins, E15_Id& id) {
-	E15_ValueTable *vt = m_instrument_list.InsertTableS(ins);
-	m_market = MarketCodeById(ins);
-	vt->SetSI("market", m_market);
-	vt->SetSS("name", ins);
-	vt->SetSI("tick", 100);
-	vt->SetSI("Multiple", 1);
-	vt->SetSS("exchange", "sh");
-	vt->SetSS("product", "ni");
-
+void data_trans::send_ins_info(std::vector<std::string>& ins_vec, E15_Id& id) {
+	for (auto& ins : ins_vec) {
+		E15_ValueTable *vt = m_instrument_list.InsertTableS(ins.c_str());
+		m_market = MarketCodeById(ins.c_str());
+		vt->SetSI("market", m_market);
+		vt->SetSS("name", ins.c_str());
+		vt->SetSI("tick", 100);
+		vt->SetSI("Multiple", 1);
+		vt->SetSS("exchange", "sh");
+		vt->SetSS("product", "ni");
+	}
 
 	m_instrument_list.Print();
 	E15_String s;

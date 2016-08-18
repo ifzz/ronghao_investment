@@ -20,7 +20,9 @@ struct ins_data {
 	__int64 stop_price;			//止损价
 	__int64 last_price;			//平仓时的上一价格
 
-	ins_data() {
+	ins_data()
+	:sts(STS_INIT)
+	,volume_tick(-1) {
 		last_kseq.vir_seq = 0;
 	}
 };
@@ -38,10 +40,10 @@ public:
 
 private:
 	bool seq_outdate(dia_group& dia, ins_data& data);
-	bool determ_maxvol(dia_group& dia, ins_data& data, bool sts_trans);
+	bool determ_maxvol(const std::string& id, dia_group& dia, ins_data& data, bool sts_trans);
 	void try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
 	void try_close_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
-	void check_10tick_amplitude(MarketDepthData *depth, dia_group& dia, ins_data& data, int64_t tick);
+	void check_10tick_amplitude(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data, int64_t tick);
 
 	void sts_trans(const std::string& id, MarketDepthData *depth, dia_group& dia);
 	void exec_trade(const std::string& id, MarketDepthData *depth, dia_group& dia, OFFSET_FLAG flag, TRADE_DIRECTION dir);

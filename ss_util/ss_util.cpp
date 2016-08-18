@@ -205,10 +205,11 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 		else		//测试环境直接写死就可以了
 			sprintf(file, "database_import/%s-%d.log", m_strategy_name.c_str(), impl->m_current_date);
 		impl->m_trade_import = fopen(file, "w");		//再新开一个文件存储
-		printf("日期更新，新建一个当前策略的买卖点日志current date = %d, file name = %s, file ptr=%p\n",
+		print_thread_safe("日期更新，新建一个当前策略的买卖点日志current date = %d, file name = %s, file ptr=%p\n",
 				impl->m_current_date, file, impl->m_trade_import);
 	}
 	fprintf(impl->m_trade_import, "%s", buf);
+	fflush(impl->m_trade_import);
 }
 
 ss_util::ss_util()

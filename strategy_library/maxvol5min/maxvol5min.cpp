@@ -46,7 +46,7 @@ bool maxvol5min::seq_outdate(dia_group& dia, ins_data& data) {
 	return false;
 }
 
-bool maxvol5min::determ_maxvol(dia_group& dia, ins_data& data, bool sts_trans) {
+bool maxvol5min::determ_maxvol(const std::string& id, dia_group& dia, ins_data& data, bool sts_trans) {
 	if (dia.base->_state != 2)
 		return false;		//选取成交量最大的K线时取的是已完成的K线
 
@@ -64,8 +64,8 @@ bool maxvol5min::determ_maxvol(dia_group& dia, ins_data& data, bool sts_trans) {
 		data.min_price = dia.ext->min_item.price;
 		if (sts_trans)
 			data.sts = STS_VOL_DETERM;
-		print_thread_safe("[determ_maxvol date=%d seq=%d]成交量最大的K线（记为A）发生更新，成交量=%d，最高价=%d，最低价=%d\n",
-				dia.base->_date, dia.base->_seq, data.volume_tick, data.max_price, data.min_price);
+		print_thread_safe("[determ_maxvol date=%d seq=%d id=%s ###]成交量最大的K线（记为A）发生更新，成交量=%lld，最高价=%d，最低价=%d\n",
+				dia.base->_date, dia.base->_seq, id.c_str(), data.volume_tick, data.max_price, data.min_price);
 	}
 
 	data.last_kseq.date = dia.base->_date;
@@ -82,8 +82,8 @@ void maxvol5min::try_open_position(const std::string& id, MarketDepthData *depth
 		data.sts = STS_OPEN_BUY;
 		data.stop_price = data.min_price;		//最低点设为止损价
 		data.last_price = -1;
-		print_thread_safe("[try_open_position date=%d seq=%d]当前价格（%d）突破K线A的最高点（%d），开多仓！\n",
-				dia.base->_date, dia.base->_seq, depth->base.nPrice, data.max_price);
+		print_thread_safe("[try_open_position date=%d seq=%d id=%s]当前价格（%lld）突破K线A的最高点（%lld），开多仓！\n",
+				dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.max_price);
 		exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_BUY);
 	}
 
@@ -92,15 +92,15 @@ void maxvol5min::try_open_position(const std::string& id, MarketDepthData *depth
 		data.sts = STS_OPEN_SELL;
 		data.stop_price = data.max_price;		//最高点设为止损价
 		data.last_price = -1;
-		print_thread_safe("[try_open_position date=%d seq=%d]当前价格（%d）突破K线A的最低点（%d），开空仓！\n",
-				dia.base->_date, dia.base->_seq, depth->base.nPrice, data.min_price);
+		print_thread_safe("[try_open_position date=%d seq=%d id=%s]当前价格（%lld）突破K线A的最低点（%lld），开空仓！\n",
+				dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.min_price);
 		exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_SELL);
 	}
 
 	if (dia.base->_state == 2) {		//在尝试开仓过程中取到一根已完成K线，再次比较成交量大小并更新最高价最低价
-		print_thread_safe("[try_open_position date=%d seq=%d]在尝试开仓过程中取到一根已完成K线，再次计算成交量最大的K线！\n",
-				dia.base->_date, dia.base->_seq);
-		determ_maxvol(dia, data, false);
+		print_thread_safe("[try_open_position date=%d seq=%d id=%s]在尝试开仓过程中取到一根已完成K线，再次计算成交量最大的K线！\n",
+				dia.base->_date, dia.base->_seq, id.c_str());
+		determ_maxvol(id, dia, data, false);
 	}
 }
 
@@ -115,8 +115,8 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 		//平多仓，最新价低于最低价构成的支撑线时止损
 		if (depth->base.nPrice < data.stop_price) {
 			close = true;
-			print_thread_safe("[try_close_position date=%d seq=%d]在平（多）仓过程中，当前价格（%d）低于止损价（%d），止损！\n",
-					dia.base->_date, dia.base->_seq, depth->base.nPrice, data.stop_price);
+			print_thread_safe("[try_close_position date=%d seq=%d id=%s]在平（多）仓过程中，当前价格（%lld）低于止损价（%lld），止损！\n",
+					dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.stop_price);
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
 			data.sts = STS_VOL_DETERM;
 		}
@@ -125,8 +125,8 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 		if (-1 == data.last_price && depth->base.nPrice > data.max_price+10*tick) {
 			data.stop_price = data.max_price;
 			data.last_price = depth->base.nPrice;
-			print_thread_safe("[try_close_position date=%d seq=%d]在平（多）仓过程中，最新价（%d）高过A的最高价（%d）+10个tick（%d），止损价（%d）"
-					"首次更新，记录价格=%d！\n", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.max_price, tick, data.stop_price, data.last_price);
+			print_thread_safe("[try_close_position date=%d seq=%d id=%s]在平（多）仓过程中，最新价（%lld）高过A的最高价（%lld）+10个tick（%d），止损价（%d）"
+					"首次更新，记录价格=%d！\n", dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.max_price, tick, data.stop_price, data.last_price);
 		}
 	}
 
@@ -134,8 +134,8 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 		//平空仓，最新价高于最高价构成的阻力线时止损
 		if (depth->base.nPrice > data.stop_price) {
 			close = true;
-			print_thread_safe("[try_close_position date=%d seq=%d]在平（空）仓过程中，当前价格（%d）超过止损价（%d），止损！\n",
-					dia.base->_date, dia.base->_seq, depth->base.nPrice, data.stop_price);
+			print_thread_safe("[try_close_position date=%d seq=%d id=%s]在平（空）仓过程中，当前价格（%lld）超过止损价（%lld），止损！\n",
+					dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.stop_price);
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_BUY);
 			data.sts = STS_VOL_DETERM;
 		}
@@ -144,13 +144,14 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 		if (-1 == data.last_price && depth->base.nPrice < data.min_price-10*tick) {
 			data.stop_price = data.min_price;
 			data.last_price = depth->base.nPrice;
-			print_thread_safe("[try_close_position date=%d seq=%d]在平（空）仓过程中，最新价（%d）小于A的最低价（%d）-10个tick（%d），止损价（%d）"
-					"首次更新！\n", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.min_price, tick, data.stop_price);
+			print_thread_safe("[try_close_position date=%d seq=%d id=%s]在平（空）仓过程中，最新价（%d）小于A的最低价（%lld）-10个tick（%lld），止损价（%d）"
+					"首次更新！\n", dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.min_price, tick, data.stop_price);
 		}
 	}
 
 	if (!close && depth->base.nTime >= m_close_time) {
-		print_thread_safe("[try_close_position date=%d time=%d]即将收盘，在收盘前强制平仓！\n", depth->base.nActionDay, depth->base.nTime);
+		print_thread_safe("[try_close_position date=%d time=%d id=%s]即将收盘，在收盘前强制平仓！\n",
+				depth->base.nActionDay, depth->base.nTime, id.c_str());
 		if (STS_OPEN_BUY == data.sts)
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
 		else		//STS_OPEN_SELL == data.sts
@@ -159,11 +160,11 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 		return;
 	}
 
-	check_10tick_amplitude(depth, dia, data, tick);
+	check_10tick_amplitude(id, depth, dia, data, tick);
 	if (dia.base->_state == 2) {		//在尝试平仓过程中取到一根已完成K线，比较成交量大小并更新最高/低价
-		print_thread_safe("[try_close_position date=%d seq=%d]在平仓过程中取到一根已完成K线，再次计算成交量最大的K线！\n",
-				dia.base->_date, dia.base->_seq);
-		if (determ_maxvol(dia, data, false)) {
+		print_thread_safe("[try_close_position date=%d seq=%d id=%s]在平仓过程中取到一根已完成K线，再次计算成交量最大的K线！\n",
+				dia.base->_date, dia.base->_seq, id.c_str());
+		if (determ_maxvol(id, dia, data, false)) {
 			if (STS_OPEN_BUY == data.sts)
 				data.stop_price = data.min_price;
 			else		//STS_OPEN_SELL == data.sts
@@ -172,23 +173,23 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 	}
 }
 
-void maxvol5min::check_10tick_amplitude(MarketDepthData *depth, dia_group& dia, ins_data& data, int64_t tick) {
+void maxvol5min::check_10tick_amplitude(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data, int64_t tick) {
 	if (data.last_price == -1)		//说明此前止损价还未调整，只有经过一次调整之后，才能在这里继续调整
 		return;
 
 	if (STS_OPEN_BUY == data.sts && depth->base.nPrice == data.last_price+10*tick) {
 		//多仓情况下，每上涨10个点，止损上涨5个点
 		data.stop_price += 5*tick;
-		print_thread_safe("[check_10tick_amplitude date=%d seq=%d]最新价（%d）比上一次更新止损价时记录的价格（%d）上涨了10个tick（%d），止损价"
-				"更改为%d！\n", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.last_price, tick, data.stop_price);
+		print_thread_safe("[check_10tick_amplitude date=%d seq=%d id=%s]最新价（%lld）比上一次更新止损价时记录的价格（%lld）上涨了10个tick（%lld），止损价"
+				"更改为%d！\n", dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.last_price, tick, data.stop_price);
 		data.last_price = depth->base.nPrice;
 	}
 
 	if (STS_OPEN_SELL == data.sts && depth->base.nPrice == data.last_price-10*tick) {
 		//空仓情况下，每下降10个点，止损下降5个点
 		data.stop_price -= 5*tick;
-		print_thread_safe("[check_10tick_amplitude date=%d seq=%d]最新价（%d）比上一次更新止损价时记录的价格（%d）下跌了10个tick（%d），止损价"
-				"更改为%d！\n", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.last_price, tick, data.stop_price);
+		print_thread_safe("[check_10tick_amplitude date=%d seq=%d id=%s]最新价（%d）比上一次更新止损价时记录的价格（%lld）下跌了10个tick（%lld），止损价"
+				"更改为%d！\n", dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, data.last_price, tick, data.stop_price);
 		data.last_price = depth->base.nPrice;
 	}
 }
@@ -206,7 +207,7 @@ void maxvol5min::sts_trans(const std::string& id, MarketDepthData *depth, dia_gr
 
 	switch (data.sts) {
 	case STS_INIT: {
-		determ_maxvol(dia, data, true);
+		determ_maxvol(id, dia, data, true);
 		break;
 	}
 	case STS_VOL_DETERM: {

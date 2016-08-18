@@ -25,8 +25,10 @@ public:
 	processor(strategy_manager *mgr_ptr);
 	virtual ~processor() {
 		m_strategy.reset();
-		if (m_handle)
+		if (m_handle) {
 			dlclose(m_handle);
+			print_thread_safe(g_log, "[processor] 成功关闭so！\n");
+		}
 	}
 
 	pid_t get_pid() { return m_spid; }

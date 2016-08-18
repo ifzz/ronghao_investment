@@ -498,10 +498,8 @@ void strategy_manager::unload_strategy(const std::vector<std::string>& args, boo
 	if (record)
 		m_xml.set_attribute(args[0].c_str(), "0", false);
 
-	if (g_conf.sub_all)
-		return;
-
-	handle_ins_unsub(pro);
+	if (!g_conf.sub_all)
+		handle_ins_unsub(pro);
 }
 
 bool strategy_manager::parse_stg_dir(const std::string& stg_dir, std::string& l, std::string& c) {
