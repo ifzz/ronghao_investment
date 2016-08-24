@@ -122,6 +122,8 @@ void DataDescriptionMgr::InitDescription(const char *data, size_t len)
 	E15_ValueTable vt;
 	vt.Import(data, len);
 
+	vt.Print();
+
 	vt.each( (int (*)(E15_Key * k,E15_Value *v,void *))on_data_desc,m_list);
 }
 
@@ -129,8 +131,8 @@ void DataDescriptionMgr::InitDescription(const char *data, size_t len)
 
 DiagramDataFactory::DiagramDataFactory()
 {
-	m_info = nullptr;
 	m_data = new E15_Queue(0,0);
+	m_info = 0;
 }
 
 DiagramDataFactory::~DiagramDataFactory()
@@ -634,11 +636,6 @@ void insert_package_queue(DiagramDataItem *data, int data_index, int tag_index, 
 		it->data = data;
 	}
 
-//	if (1 == data_index && data->base._seq == 18) {		//12秒K线/seq=18
-//		printf("@@@@@@@@ 12秒kline data=%p, data_index=%d, tag_index=%d, mode=%d, seq=%d\n",
-//				data, data_index, tag_index, mode, data->base._seq);
-//	}
-
 	if (tag_index == -1) { 		//data
 		it->mode = mode;
 //		printf("[insert_package_queue]当前更新的是data=%p, data_index=%d, mode=%d\n", data, data_index, mode);
@@ -661,7 +658,8 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,E15_St
 	int ext_len = len - sizeof(MarketAnalyseDataBase);
 	const char * ext = ptr + sizeof(MarketAnalyseDataBase);
 
-	return OnData(depth,mode,index,base,ext,ext_len);
+	int ret = OnData(depth,mode,index,base,ext,ext_len);
+	return ret;
 }
 
 int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,MarketAnalyseDataBase * base,const char * ext_data,int len) 	//网络实时发送的数据
@@ -674,19 +672,11 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 	if( h->m_dt->type_index != (unsigned int)index )
 		return 0;
 
-//	if (!strcmp(h->m_dt->class_name, "kline") && !strcmp(h->m_dt->name, "分钟") && h->m_dt->param == 5) {
-//		m_log.Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u]) state=%d mode=%d\n",h->m_dt->class_name,
-//				h->m_dt->name,h->m_dt->param,base->_date,base->_seq,base->_state, mode);
-//	}
-
-	h->m_write_flag = 1;
-	DiagramDataItem * pre = 0;
+	h->m_write_flag |= 0x1;
 	if( mode == 1 ) //0 删除，1新增，2修改
 	{
 		DiagramDataItem * tail = h->PeekDataItem(-1);
-
-//		E15_Debug::Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u])\n",h->m_dt->class_name,
-//				h->m_dt->name,h->m_dt->param,base->_date,base->_seq);
+		//E15_Debug::Printf(0,"DiagramDataFactory::OnData(%s:%s%d  @[%u:%u])\n",h->m_dt->class_name,h->m_dt->name,h->m_dt->param,base->_date,base->_seq);
 		if( tail )
 		{
 			if( tail->base._date > base->_date) //新增数据日期太旧，抛弃
@@ -705,9 +695,11 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 			data->pri->Strcpy(ext_data, h->ext_len);
 		}
 
+		if( !h->m_write_item )
+			h->m_write_item = data;
 		h->m_data->PutTail(data);
 
-		pre = (DiagramDataItem *)data->Pre();
+		DiagramDataItem *pre = (DiagramDataItem *)data->Pre();
 		if( pre)
 		{
 			pre->base._state = 2;
@@ -721,7 +713,6 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 
 		return h->m_data->Count(); //新增后，可能需要写文件了
 	}
-
 
 	DiagramDataItem * data = h->FindData(base->_date,base->_seq);
 	if( !data )
@@ -743,6 +734,8 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 
 		insert_package_queue(data, index, -1, mode);
 		h->m_data->PutHead(data);
+		if( !h->m_write_item )
+			h->m_write_item = data;
 
 		return h->m_data->Count();
 
@@ -750,8 +743,10 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 
 	if( mode == 0 )
 	{
+		if( h->m_write_item == data)
+			h->m_write_item = (DiagramDataItem *)data->Next();
+
 		delete data;
-		insert_package_queue(data, index, -1, mode);
 		return h->m_data->Count();
 	}
 
@@ -763,6 +758,9 @@ int DiagramDataFactory::OnData(MarketDepthData * depth,int mode,int index,Market
 			data->pri = new E15_String;
 		data->pri->Strcpy(ext_data, len);
 	}
+
+	if( !h->m_write_item )
+		h->m_write_item = data;
 	insert_package_queue(data, index, -1, mode);
 	return h->m_data->Count();
 
@@ -775,8 +773,23 @@ int DiagramDataFactory::OnTag(MarketDepthData * depth,int mode,int data_index,in
 	const char * ext_data = ptr + sizeof(MarketAnalyseTagBase);
 	int ext_len = vt->Length() - sizeof(MarketAnalyseTagBase);
 
-	return OnTag(depth,mode,data_index,tag_index,base,ext_data,ext_len);
+	int ret = OnTag(depth,mode,data_index,tag_index,base,ext_data,ext_len);
 
+	return ret;
+
+}
+
+
+inline int is_old_item(MarketAnalyseTagBase * base,DiagramDataItem * item)
+{
+	if( base->_date < item->base._date)
+		return 1;
+	if( base->_date > item->base._date)
+		return 0;
+
+	if( base->_seq < item->base._seq)
+		return 1;
+	return 0;
 }
 
 int DiagramDataFactory::OnTag(MarketDepthData * depth,int mode,int data_index,int tag_index,MarketAnalyseTagBase * base,const char * ext_data,int len)		//网络实时发送的数据
@@ -792,13 +805,20 @@ int DiagramDataFactory::OnTag(MarketDepthData * depth,int mode,int data_index,in
 	if( (unsigned int )tag_index >= h->m_sub->Count() )
 		return 0;
 
-	h->m_write_flag = 1;
+	h->m_write_flag |= 0x2;
 
 	DiagramDataHandler * tag_h = (DiagramDataHandler *)h->m_sub->At(tag_index,0);
 
 	DiagramDataItem * data = h->FindData(base->_date,base->_seq);
 	if( !data )
 		return 0;
+
+	if( !tag_h->m_write_item )
+		tag_h->m_write_item = data;
+	else if( is_old_item(base,tag_h->m_write_item))
+	{
+		tag_h->m_write_item = data;
+	}
 
 	data->need_write |= 0x2;
 
@@ -893,7 +913,6 @@ int factory_on_data(DataDescription * desc, DiagramDataFactory * factory)
 
 void DiagramDataFactory::Init(E15_Queue * q)
 {
-	m_log.Init("test", 1000);
 	q->each( (int (*)(E15_Object * ,void *) ) factory_on_data , this);
 }
 
@@ -910,10 +929,9 @@ E15_Queue *	DiagramDataHandler::PeekSub()
 
 DiagramDataHandler::DiagramDataHandler()
 {
-	m_dt = nullptr;
-
 	m_data = new E15_Queue(0,0);
 	m_sub = 0;
+	m_write_item = 0;
 	m_write_flag = 0;
 	m_write_date = 0;
 	m_write_seq = 0;
@@ -924,6 +942,8 @@ DiagramDataHandler::DiagramDataHandler()
 	m_write_pos = 0;
 	m_cache_date = 0;
 	m_cache_seq = 0;
+
+	m_hash = rand() % 500;
 }
 
 DiagramDataHandler::~DiagramDataHandler()
@@ -936,23 +956,31 @@ DiagramDataHandler::~DiagramDataHandler()
 inline int is_need_data(DiagramDataItem * data,unsigned int  date,unsigned int seq)
 {
 	if( date != data->base._date )
+	{
+		if( data->base._date < date  )
+			return -1;
 		return 0;
+	}
 	if( seq != data->base._seq )
+	{
+		if(data->base._seq < seq )
+			return -1;
 		return 0;
+	}
 	return 1;
 }
 
 DiagramDataItem * DiagramDataHandler::FindData(unsigned int  date,unsigned int seq)
 {
 	DiagramDataItem * data = (DiagramDataItem * )m_data->Tail(0);
-	//int cnt = 0;
+	int ret = 0;
 	while( data )
 	{
-		if( is_need_data(data,date,seq))
+		ret = is_need_data(data,date,seq);
+		if( ret > 0 )
 			return data;
-		//cnt++;
-		//if( cnt > 500 )
-		//	return 0;
+		if( ret < 0 )
+			return 0;
 		data = (DiagramDataItem * )data->Pre();
 	}
 	return 0;

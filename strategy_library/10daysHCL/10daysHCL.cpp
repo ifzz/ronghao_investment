@@ -8,6 +8,13 @@ std::shared_ptr<strategy_base> create_strategy() {
 void days10HCL::read_conf(std::map<std::string, const char*>& conf) {
 	m_kline = conf["test_tgt"];
 	m_close_time = atoi(conf["close_time"]);
+
+	for (auto& ins_info : m_ins_info) {
+		auto& data = m_ins_data[ins_info.first];
+		for_each_his_dia(ins_info.first, 1, "日", "kline", atoi(conf["his_start"]), [&](dia_group& dia, void *args)->void {
+			cons_10days_hcl(dia, data);
+		}, nullptr);
+	}
 }
 
 void days10HCL::init() {
@@ -153,6 +160,8 @@ void days10HCL::execute(depth_dia_group& group) {
 
 void days10HCL::sts_trans(const std::string& id, MarketDepthData *depth, dia_group& dia) {
 	auto& data = m_ins_data[id];
+
+	print_thread_safe("[sts_trans date=%d seq=%d id=%s]测试当前实时图表数据\n", dia.base->_date, dia.base->_seq, id.c_str());
 
 	switch (data.sts) {
 	case STS_INIT: {

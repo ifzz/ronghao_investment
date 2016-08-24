@@ -146,7 +146,7 @@ void data_manager::OnNotify(E15_ServerInfo * info,
 	if (m_data_mgr->m_test_exist_data)
 		printf("[%x:%x] (N=%d, name=%s:role=%s) cmd = %d ins_id = %s\n", info->id.h, info->id.l,
 			info->N, info->name, info->role, cmd->cmd, data->c_str());
-	m_data_mgr->data_dispatch(cmd->cmd, data);
+	m_data_mgr->data_dispatch(cmd, data);
 }
 #endif
 

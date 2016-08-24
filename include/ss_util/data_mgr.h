@@ -6,11 +6,12 @@
 #include "E15_string_array.h"
 #include "E15_value.h"
 #include "E15_thread.h"
+#include "StockDataCache.h"
+#include "stock_data.h"
+
 #include <deque>
 #include <set>
 #include <memory>
-#include "StockDataCache.h"
-#include "stock_data.h"
 
 class DiagramDataItem;
 struct raw_dia_group {
@@ -117,12 +118,9 @@ public:
 	int LoadCacheData(const char * data,unsigned int len,int index ,int block_size);//加载最新缓存数据
 	int LoadCacheTag(const char * data,unsigned int len,int index,int parent_index ,int block_size);//加载最新缓存数据
 
-	E15_Lock lock;
 	ContractInfo 		*m_info;
-private:
+public:
 	E15_Queue * 	m_data;
-
-	E15_Log m_log;
 
 	int OnData(MarketDepthData * depth,int mode,int index,MarketAnalyseDataBase * base,const char * ext_data,int len); 	//网络实时发送的数据
 	int OnTag(MarketDepthData * depth,int mode,int data_index,int tag_index,MarketAnalyseTagBase * base,const char * ext_data,int len);		//网络实时发送的数据
@@ -165,22 +163,23 @@ private:
 
 
 
-private:
+public:
 	E15_Queue * 	m_data; 	//待显示绘制数据
 	E15_Queue *		m_sub;		//tag的类型描述
 
 	MarketDataType * m_dt;
 
+	DiagramDataItem * m_write_item; //下一个需要存储数据的开始位置
 	int 				m_write_flag; //是否已经写入磁盘的标志
 	unsigned int m_write_date;
 	unsigned int m_write_seq;
+	unsigned int m_hash; //数据堆积随机散列，避免同时磁盘操作
 
 	long m_write_pos;
 	E15_String * m_write_cache;
 
 	unsigned int m_cache_date;
 	unsigned int m_cache_seq;
-
 
 
 public:
@@ -217,6 +216,8 @@ public:
 
 	E15_ValueTable  m_vt;
 	MarketDepthData * depth;
+
+	E15_Lock lock;
 	void CreateFactory();
 
 public:

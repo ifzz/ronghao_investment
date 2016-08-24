@@ -11,6 +11,13 @@ void maxvol5min::read_conf(std::map<std::string, const char*>& conf) {
 
 void maxvol5min::init() {
 	m_kline_idx = m_type_map[m_kline].type_index;
+
+	for (auto& ins_info : m_ins_info) {
+		auto& data = m_ins_data[ins_info.first];
+		for_each_his_dia(ins_info.first, 5, "分钟", "kline", 0, [&](dia_group& dia, void *args)->void {
+			determ_maxvol(ins_info.first, dia, data, true);
+		}, nullptr);
+	}
 }
 
 void maxvol5min::exec_trade(const std::string& id, MarketDepthData *depth, dia_group& dia,
@@ -64,7 +71,7 @@ bool maxvol5min::determ_maxvol(const std::string& id, dia_group& dia, ins_data& 
 		data.min_price = dia.ext->min_item.price;
 		if (sts_trans)
 			data.sts = STS_VOL_DETERM;
-		print_thread_safe("[determ_maxvol date=%d seq=%d id=%s ###]成交量最大的K线（记为A）发生更新，成交量=%lld，最高价=%d，最低价=%d\n",
+		print_thread_safe("[determ_maxvol date=%d seq=%d id=%s]成交量最大的K线（记为A）发生更新，成交量=%lld，最高价=%d，最低价=%d\n",
 				dia.base->_date, dia.base->_seq, id.c_str(), data.volume_tick, data.max_price, data.min_price);
 	}
 
@@ -110,7 +117,7 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 
 	bool close = false;
 	int64_t tick = m_ins_info[id].price_tick;
-	tick = 100000;
+//	tick = 100000;
 	if (STS_OPEN_BUY == data.sts) {
 		//平多仓，最新价低于最低价构成的支撑线时止损
 		if (depth->base.nPrice < data.stop_price) {
@@ -166,9 +173,9 @@ void maxvol5min::try_close_position(const std::string& id, MarketDepthData *dept
 				dia.base->_date, dia.base->_seq, id.c_str());
 		if (determ_maxvol(id, dia, data, false)) {
 			if (STS_OPEN_BUY == data.sts)
-				data.stop_price = data.min_price;
+				data.stop_price = std::max(data.stop_price, data.min_price);
 			else		//STS_OPEN_SELL == data.sts
-				data.stop_price = data.max_price;
+				data.stop_price = std::min(data.stop_price, data.max_price);
 		}
 	}
 }

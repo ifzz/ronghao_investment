@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 
 #include "stock_data.h"
 
@@ -17,6 +18,8 @@ struct datetime {		//日期时间，需要将本地时间带给交易服务器
 	:date(0)
 	,time(0) {}
 };
+
+datetime get_current_datetime();
 
 enum ORDER_TYPE {
 	ORDER_UNK = 0,
@@ -94,10 +97,6 @@ struct depth_dia_group {
 	std::string ins_id;		//合约id
 	std::shared_ptr<MarketDepthData> depth;	//深度行情
 	std::map<int, std::list<dia_group>> dias;		//key: data_index, value: dia_group链表
-
-	depth_dia_group() {
-		depth = std::make_shared<MarketDepthData>();
-	}
 };
 
 class strategy_base {
@@ -114,6 +113,18 @@ public:
 	 */
 	virtual void read_conf(std::map<std::string, const char*>& conf) {}
 	virtual void init() {}
+
+	/**
+	 * 为某些策略加载历史图表数据，使这些策略能够快速初始化，例如需要的是5分钟K线，则以下参数初始化为：
+	 * @id：合约id
+	 * @param：5
+	 * @name：分钟
+	 * @class_name：kline
+	 * @date：指定日期，从date开始加载一直到当前时点
+	 * @f/args：回调及参数
+	 */
+	void for_each_his_dia(const std::string& id, long param, const std::string& name, const std::string& class_name, unsigned int date,
+			std::function<void(dia_group&, void*)> f, void *args);
 
 	/**
 	 * 打印相关信息，用于调试

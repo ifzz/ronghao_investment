@@ -4,10 +4,24 @@ crx::evd_thread_pool g_log_th;
 std::shared_ptr<log_handle> g_log_hd;
 stg_config g_conf;
 
+datetime get_current_datetime() {
+	datetime dt;
+	char time_buffer[64] = {0};
+
+	timeval tv;
+	gettimeofday(&tv, nullptr);
+	tm *timeinfo = localtime(&tv.tv_sec);
+	strftime(time_buffer, sizeof(time_buffer), "%Y%m%d", timeinfo);
+	dt.date = atoi(time_buffer);
+	strftime(time_buffer, sizeof(time_buffer), "%H%M%S", timeinfo);
+	dt.time = atoi(time_buffer)*1000+tv.tv_usec/1000;		//时间精确到毫秒级
+	return dt;
+}
+
 void log_handle::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 	auto j = std::dynamic_pointer_cast<log_job>(job);
 	j->log->Printf(0, j->print_str.c_str());
-	if (true)
+	if (j->print_screen)
 		printf("%s", j->print_str.c_str());
 }
 
@@ -17,7 +31,7 @@ void print_thread_safe(E15_Log& log, const char *format, ...) {
 	va_start(args, format);
 	vsprintf(log_buf, format, args);
 	va_end(args);
-	auto job = std::make_shared<log_job>(log_buf, &log);
+	auto job = std::make_shared<log_job>(log_buf, &log, true);
 	g_log_th.job_dispatch(job);
 }
 
@@ -27,7 +41,7 @@ void strategy_base::print_thread_safe(const char *format, ...) {
 	va_start(args, format);
 	vsprintf(impl->format_buf, format, args);
 	va_end(args);
-	auto job = std::make_shared<log_job>(impl->format_buf, &impl->m_log);
+	auto job = std::make_shared<log_job>(impl->format_buf, &impl->m_log, impl->m_print_screen);
 	g_log_th.job_dispatch(job);
 }
 
@@ -94,6 +108,11 @@ void sb_impl::read_config(const char *config) {
 			}
 		}
 	}
+	if (cus_ini.end() != cus_ini.find("print_screen")) {
+		m_print_screen = atoi(cus_ini["print_screen"]);
+		cus_ini.erase("print_screen");
+	}
+
 	cus_ini.erase("diagram_type");
 	m_this_stg->read_conf(cus_ini);
 }
@@ -143,7 +162,7 @@ void sb_impl::on_init() {
 void strategy_base::request_trade(const std::string& ins_id, order_instruction& oi) {
 	sb_impl *impl = static_cast<sb_impl*>(m_obj);
 	if (FLAG_OPEN == oi.flag) {
-		datetime dt = impl->m_mgr_ptr->get_current_datetime();
+		datetime dt = get_current_datetime();
 		oi.uuid.date = dt.date;
 		oi.uuid.time = dt.time;
 		oi.uuid.strategy_id = impl->m_stg_id;
@@ -187,7 +206,7 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 			diagram = std::to_string(data_desc->m_dt.param)+data_desc->m_dt.name+data_desc->m_dt.class_name;
 	}
 
-	char buf[128] = {0};
+	char buf[256] = {0};
 	//本地日期#时间 策略id 下单源id 交易流水号 合约id 指标类型#指标流水号 开平#交易方向 价格#手数#信号 行情日期#时间
 	sprintf(buf, "本地%d#%d %d %d %d  %s  %s#%d  %s#%s  %lld#%d#%d  行情%d#%d\n",
 			oi.uuid.date, oi.uuid.time, oi.uuid.strategy_id, oi.uuid.src, oi.uuid.seq, ins_id.c_str(), diagram.c_str(), oi.dia_seq,
@@ -212,10 +231,37 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 	fflush(impl->m_trade_import);
 }
 
+void strategy_base::for_each_his_dia(const std::string& id, long param, const std::string& name, const std::string& class_name, unsigned int date,
+		std::function<void(dia_group&, void*)> f, void *args) {
+	sb_impl *impl = static_cast<sb_impl*>(m_obj);
+	impl->f = std::move(f);
+	impl->args = args;
+
+	impl->dia.base = new MarketAnalyseDataBase;
+	impl->dia.ext = new MarketAnalyseKline;
+	for (int i = 0; i < 32; ++i) {
+		impl->dia.tags.push_back(new MarketAnalyseTagBase);
+		impl->dia.tag_mode.push_back(-1);
+	}
+	impl->dia.mode = -1;
+
+	short store_level = 0;
+	if (name == "日" || name == "周" || name == "月")
+		store_level = 1;
+	MarketDataType dt = {0, 0, param, name.c_str(), class_name.c_str(), store_level};
+	impl->m_mgr_ptr->load_dia_history(id, dt, date, m_obj);
+
+	delete impl->dia.base;
+	delete impl->dia.ext;
+	for (auto& tag : impl->dia.tags)
+		delete tag;
+}
+
 ss_util::ss_util()
 :m_ins_list(nullptr)
 ,m_diagram_info(nullptr)
-,m_test_seq(0) {}
+,m_cache_over(false)
+,m_history_store(nullptr) {}
 
 ss_util::~ss_util() {
 	if (m_ins_list)
@@ -259,9 +305,14 @@ void ss_util::global_log_init() {
 
 	g_log_th.start(1);
 	g_log_th.register_processor(g_log_hd);
+
+	m_history_store = Create_E15_HistoryStore();
+	m_history_store->Init();
 }
 
 void ss_util::global_log_destroy() {
+	delete m_history_store;
+
 	//终止日志线程
 	g_log_th.unregister_processor(g_log_hd);
 	g_log_th.stop();
@@ -274,20 +325,6 @@ ContractInfo ss_util::get_ins_info(const std::string& id) {
 void ss_util::for_each_ins(std::function<void(const std::string&, const ContractInfo&, void*)> f, void *args) {
 	for (auto& pair : m_ins_info)
 		f(pair.first, pair.second.detail, args);
-}
-
-datetime ss_util::get_current_datetime() {
-	datetime dt;
-	char time_buffer[64] = {0};
-
-	timeval tv;
-	gettimeofday(&tv, nullptr);
-	tm *timeinfo = localtime(&tv.tv_sec);
-	strftime(time_buffer, sizeof(time_buffer), "%Y%m%d", timeinfo);
-	dt.date = atoi(time_buffer);
-	strftime(time_buffer, sizeof(time_buffer), "%H%M%S", timeinfo);
-	dt.time = atoi(time_buffer)*1000+tv.tv_usec/1000;		//时间精确到毫秒级
-	return dt;
 }
 
 static int64_t s_ins_type = 0;
@@ -358,6 +395,100 @@ int ss_util::handle_diagram_item(E15_Key * key,E15_Value * info,DiagramDataMgr *
 	return 0;
 }
 
+void ss_util::load_dia_history(const std::string& id, MarketDataType& dt, unsigned int date, void *obj) {
+	int market = MarketCodeById(id.c_str());
+	datetime cdt = get_current_datetime();
+	if (!date)
+		date = cdt.date;
+
+	if (!dt.store_level) {		//存储级别为0，加载的是day目录下的历史图表
+		//加载的是当天的历史数据
+		m_history_store->LoadDiaHistory(ss_util::get_dia_history, obj, market, id.c_str(), &dt, date);
+		return;
+	}
+
+	//存储级别为1，加载的是year目录下的历史图表
+	while (date != cdt.date) {
+		m_history_store->LoadDiaHistory(ss_util::get_dia_history, obj, market, id.c_str(), &dt, date, 0, 1, 1);
+		date++;
+	}
+}
+
+int ss_util::get_dia_history(void * obj,int market,const char * id,MarketDataType * dt,MarketDataType * tt,
+			HistoryDiaBase * base,const char * ext_data,int len) {
+	sb_impl *impl = static_cast<sb_impl*>(obj);
+	if (!tt) {		//当前得到的是一个data
+		if (1 == impl->dia.mode)
+			impl->f(impl->dia, impl->args);
+
+		*impl->dia.base = *base->data_base;
+		impl->dia.base->_state = 2;
+		if (len && len == sizeof(MarketAnalyseKline))
+			memcpy(impl->dia.ext, ext_data, len);
+		impl->dia.mode = 1;
+		for (auto& tag_mode : impl->dia.tag_mode)
+			tag_mode = -1;
+	} else {		//得到的是一个tag
+		std::string data_name = std::to_string(dt->param)+dt->name+dt->class_name;
+		std::string tag_name = std::to_string(tt->param)+tt->name+tt->class_name;
+		int tag_idx = impl->m_this_stg->m_type_map[data_name].tags[tag_name];
+		*impl->dia.tags[tag_idx] = *base->tag_base;
+		impl->dia.tag_mode[tag_idx] = 1;
+	}
+	return 1;
+}
+
+void ss_util::parse_cache_diagroup(E15_ServerCmd *cmd, const char *data, int len) {
+	int market = MarketCodeById(data);
+	DiagramDataMgr *stock = DiagramDataMgr_GetData(market, data, 0, 1);
+	m_unzip_buffer.Reset();
+	m_unzip.unzip_start(&m_unzip_buffer);
+	m_unzip.unzip(data+DEPTH_MARKET_HEAD_LEN, len-DEPTH_MARKET_HEAD_LEN);
+	m_unzip.unzip_end();
+
+	stock->lock.Lock();
+	do {
+		if (!stock->factory)
+			break;
+		if (Stock_Msg_DiagramCacheData == cmd->cmd)
+			stock->factory->LoadCacheData(m_unzip_buffer.c_str(), m_unzip_buffer.Length(), cmd->receiver.l, cmd->status);
+		else		//Stock_Msg_DiagramCacheTag == cmd->cmd
+			stock->factory->LoadCacheTag(m_unzip_buffer.c_str(), m_unzip_buffer.Length(), cmd->receiver.l, cmd->receiver.h, cmd->status);
+	} while (0);
+	stock->lock.Unlock();
+}
+
+void ss_util::make_index_for_cache() {
+	dia_group group;
+	for (auto& ins : m_ins_info) {
+		int market = MarketCodeById(ins.first.c_str());
+		DiagramDataMgr *stock = DiagramDataMgr_GetData(market, ins.first.c_str(), 0, 1);
+		for (unsigned long i = 0; i < stock->factory->m_data->Count(); ++i) {
+			auto& cache_list = m_dia_cache[ins.first][i];
+			DiagramDataHandler *h = (DiagramDataHandler*)stock->factory->m_data->At(i, 0);
+			for (unsigned long j = 0; j < h->m_data->Count(); ++j) {
+				DiagramDataItem *item = (DiagramDataItem*)h->m_data->At(j, 0);
+				group.base = &item->base;
+				group.ext = (MarketAnalyseKline*)item->pri->c_str();
+				group.mode = 1;
+				for (int k = 0; k < item->tag_cnt; ++i) {
+					DiagramTag *tag = item->PeekTag(k);
+					if (tag) {
+						group.tags.push_back(&tag->base);
+						group.tag_mode.push_back(1);
+					} else {
+						group.tags.push_back(nullptr);
+						group.tag_mode.push_back(-1);
+					}
+				}
+				cache_list.push_back(group);
+				group.tags.clear();
+				group.tag_mode.clear();
+			}
+		}
+	}
+}
+
 depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 	int market = MarketCodeById(data);
 	DiagramDataMgr *stock = DiagramDataMgr_GetData(market, data, 0, 1);
@@ -373,6 +504,7 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 
 	depth_dia_group group;
 	group.ins_id = data;
+	group.depth = std::make_shared<MarketDepthData>();
 	*group.depth = *stock->depth;
 
 	E15_ValueTable *dia_vt = m_vt.TableS("dia");

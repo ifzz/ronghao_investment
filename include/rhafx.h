@@ -17,6 +17,7 @@
 #include "crx_pch.h"
 #include "strategy_base.h"
 #include "stock_msg.h"
+#include "store_history.h"
 #include "stock_data.h"
 #include "StockDataCache.h"
 

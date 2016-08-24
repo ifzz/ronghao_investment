@@ -27,6 +27,16 @@ test_child/Debug/test_child.d
 history_md_server/Debug/history_mgr.d
 history_md_server/Debug/data_trans.d
 
+ss_util/Debug/data_mgr.o
+ss_util/Debug/DiagramDataFactory.o
+ss_util/Debug/ss_util.o
+strategy_server/Debug/strategy_manager.o
+strategy_server/Debug/data_manager.o
+strategy_proxy/Debug/strategy_proxy.o
+test_child/Debug/test_child.o
+history_md_server/Debug/history_mgr.o
+history_md_server/Debug/data_trans.o
+
 strategy_library/sideways_false_breakthrough/Debug/sideways_false_breakthrough.d
 strategy_library/strategy_demo1/Debug/strategy_demo1.d
 strategy_library/strategy_demo4/Debug/strategy_demo4.d
@@ -39,16 +49,7 @@ strategy_library/rollbbtall/Debug/rollbbtall.d
 strategy_library/rollbbtall_ver2/Debug/rollbbtall_ver2.d
 strategy_library/maxvol5min/Debug/maxvol5min.d
 strategy_library/10daysHCL/Debug/10daysHCL.d
-
-ss_util/Debug/data_mgr.o
-ss_util/Debug/DiagramDataFactory.o
-ss_util/Debug/ss_util.o
-strategy_server/Debug/strategy_manager.o
-strategy_server/Debug/data_manager.o
-strategy_proxy/Debug/strategy_proxy.o
-test_child/Debug/test_child.o
-history_md_server/Debug/history_mgr.o
-history_md_server/Debug/data_trans.o
+strategy_library/max10vol1min/Debug/max10vol1min.d
 
 strategy_library/sideways_false_breakthrough/Debug/sideways_false_breakthrough.o
 strategy_library/strategy_demo1/Debug/strategy_demo1.o
@@ -62,3 +63,4 @@ strategy_library/rollbbtall/Debug/rollbbtall.o
 strategy_library/rollbbtall_ver2/Debug/rollbbtall_ver2.o
 strategy_library/maxvol5min/Debug/maxvol5min.o
 strategy_library/10daysHCL/Debug/10daysHCL.o
+strategy_library/max10vol1min/Debug/max10vol1min.o

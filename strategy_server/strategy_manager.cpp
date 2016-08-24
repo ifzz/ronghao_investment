@@ -140,13 +140,14 @@ void sig_child(int sig_no) {
 }
 
 bool strategy_manager::init(int argc, char *argv[]) {
-	if (access(FIFO_PREFIX, F_OK))
-		mkdir(FIFO_PREFIX, 0755);
 	signal(SIGCHLD, [](int sig_no)->void {
 		sig_child(sig_no);
 	});
 
 	parse_ini();
+	if (!g_conf.for_produce && access(FIFO_PREFIX, F_OK))
+		mkdir(FIFO_PREFIX, 0755);
+
 	m_xml.load("ini/autoload.xml", "config");
 	global_log_init();
 	g_log.Init("strategy_manager", 100);
@@ -227,8 +228,8 @@ void strategy_manager::sub_and_load(bool is_resub) {
 		auto_load_stg();
 }
 
-void strategy_manager::data_dispatch(int cmd, E15_String *&data) {
-	switch (cmd) {
+void strategy_manager::data_dispatch(E15_ServerCmd *cmd, E15_String *&data) {
+	switch (cmd->cmd) {
 	case Stock_Msg_InstrumentList: {
 		if (m_ins_list)
 			delete m_ins_list;
@@ -255,7 +256,24 @@ void strategy_manager::data_dispatch(int cmd, E15_String *&data) {
 		break;
 	}
 
+	case Stock_Msg_DiagramCacheData:
+	case Stock_Msg_DiagramCacheTag: {
+		if (!g_conf.conn_real)
+			return;		//如果连接的不是实时行情，那么不需要关心缓存数据
+
+		if (data->Length() < DEPTH_MARKET_HEAD_LEN)
+			return;
+
+		parse_cache_diagroup(cmd, data->c_str(), data->Length());
+		break;
+	}
+
 	case Stock_Msg_DiagramGroup: {
+		if (!m_cache_over) {
+			make_index_for_cache();
+			m_cache_over = true;
+		}
+
 		if (data->Length() < DEPTH_MARKET_HEAD_LEN)
 			return;
 

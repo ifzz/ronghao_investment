@@ -92,7 +92,7 @@ public:
 
 	void load_strategy(const std::vector<std::string>& args, bool record = true);
 	void unload_strategy(const std::vector<std::string>& args, bool record = true);
-	void data_dispatch(int cmd, E15_String *&data);
+	void data_dispatch(E15_ServerCmd *cmd, E15_String *&data);
 
 	void child_crash(pid_t pid);
 	void flush();
