@@ -18,6 +18,12 @@ public:
 	virtual void process_task(std::shared_ptr<crx::evd_thread_job> job);
 };
 
+struct cache_info {
+	std::map<int, dia_group> cache_dia;
+	std::function<void(dia_group&, void*)> f;
+	void *args;
+};
+
 class ss_util;
 class sb_impl {
 public:
@@ -46,15 +52,16 @@ public:
 	bool m_print_screen;
 	E15_Log m_log;			//每个具体的策略都有一个私有的日志
 
-	dia_group dia;
-	std::function<void(dia_group&, void*)> f;
-	void *args;
+	dia_group file_dia;
+	std::map<std::string, cache_info> cache;
 };
 
 struct contract_info {
 	int64_t type;
 	size_t subscribe_cnt;
 	ContractInfo detail;
+
+	std::map<int, std::list<dia_group>> dia_cache;		////当前合约的图表缓存
 
 	contract_info()
 	:type(-1)
@@ -74,7 +81,9 @@ public:
 
 	ContractInfo get_ins_info(const std::string& id);
 	void for_each_ins(std::function<void(const std::string&, const ContractInfo&, void*)> f, void *args);
-	void load_dia_history(const std::string& id, MarketDataType& dt, unsigned int date, void *obj);
+	void load_dia_history(const std::string& id, MarketDataType& dt, unsigned int date, unsigned int cdate, void *obj);
+	void load_dia_hiscache(const std::string& id, int data_index, DiagramDataHandler *h, short store_level, void *obj);
+	void make_index_for_cache();
 
 	virtual unsigned int get_usable_stg_id() { return 0; }
 	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) = 0;
@@ -88,9 +97,10 @@ protected:
 	void parse_diagram_info(const char *data, int len);
 	depth_dia_group parse_diagram_group(const char *data, int len);
 	void parse_cache_diagroup(E15_ServerCmd *cmd, const char *data, int len);
-	void make_index_for_cache();
 
 private:
+	void load_cache_forstg(const std::string& id, int data_index, DiagramDataItem *item, sb_impl *impl, bool exec);
+
 	static int handle_contract_info(E15_Key *key, E15_Value *info, ss_util *mgr_ptr);
 	static int handle_diagram_item(E15_Key * key,E15_Value * info,DiagramDataMgr *stock);
 
@@ -101,9 +111,6 @@ protected:
 	std::map<std::string, contract_info> m_ins_info;		//it->first: instrument id, it->second: instrument info
 	//在测试环境中接收到以下两个信息时保存原始数据，在创建子进程成功之后立即推送这两者
 	E15_String *m_ins_list, *m_diagram_info;
-
-	bool m_cache_over;
-	std::map<std::string, std::map<int, std::list<dia_group>>> m_dia_cache;		//每种合约各个类型的缓存数据
 
 	E15_Zip m_unzip;
 	E15_String m_unzip_buffer;

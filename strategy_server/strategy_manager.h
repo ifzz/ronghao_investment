@@ -32,6 +32,10 @@ public:
 	}
 
 	pid_t get_pid() { return m_spid; }
+	void init_strategy() {
+		sb_impl *impl = static_cast<sb_impl*>(m_strategy->m_obj);
+		impl->on_init();
+	}
 	bool load_share_for_produce(void *handle, const std::string& l, const std::string& c);
 	bool create_child_for_test(const std::string& l, const std::string& c, E15_String *ins_list, E15_String *diagram_info);
 	void destroy_child_for_test(const std::string& l, const std::string& c);
@@ -76,6 +80,8 @@ class strategy_manager : public ss_util {
 public:
 	strategy_manager()
 	:m_test_exist_data(false)
+	,m_cache_over(false)
+	,m_cache_cancel(false)
 	,m_statis_stop(false) {
 		m_data_recv = new data_manager(this);
 	}
@@ -90,6 +96,8 @@ public:
 		m_data_recv->send_instruction(ins_id, oi);
 	}
 
+	void sub_and_load(bool is_resub);
+	void notify_cache_over();
 	void load_strategy(const std::vector<std::string>& args, bool record = true);
 	void unload_strategy(const std::vector<std::string>& args, bool record = true);
 	void data_dispatch(E15_ServerCmd *cmd, E15_String *&data);
@@ -103,7 +111,6 @@ public:
 	void unregister_rfifo(int fd);
 
 private:
-	void sub_and_load(bool is_resub);
 	void auto_load_stg();
 	std::set<std::string> get_stg_dir();
 	void print_stg(const std::set<std::string>& dir_set);
@@ -126,6 +133,10 @@ private:
 	crx::epoll_thread m_trade_th;
 	crx::evd_thread_pool m_threads;
 	std::map<std::string, library_info> m_libraries;	//it->first: library_name with path, it->second: library info
+
+	bool m_cache_over, m_cache_cancel;
+	std::mutex m_cache_mtx;
+	std::condition_variable m_cache_cv;
 
 	//用于指标测试的成员变量
 	bool m_statis_stop;

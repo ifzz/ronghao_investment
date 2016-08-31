@@ -8,17 +8,17 @@ std::shared_ptr<strategy_base> create_strategy() {
 void days10HCL::read_conf(std::map<std::string, const char*>& conf) {
 	m_kline = conf["test_tgt"];
 	m_close_time = atoi(conf["close_time"]);
-
-	for (auto& ins_info : m_ins_info) {
-		auto& data = m_ins_data[ins_info.first];
-		for_each_his_dia(ins_info.first, 1, "日", "kline", atoi(conf["his_start"]), [&](dia_group& dia, void *args)->void {
-			cons_10days_hcl(dia, data);
-		}, nullptr);
-	}
 }
 
 void days10HCL::init() {
 	m_kline_idx = m_type_map[m_kline].type_index;
+
+	for (auto& ins_info : m_ins_info) {
+		auto& data = m_ins_data[ins_info.first];
+		for_each_his_dia(ins_info.first, 1, "日", "kline", -15, [&](dia_group& dia, void *args)->void {
+			cons_10days_hcl(ins_info.first, dia, data);
+		}, nullptr);
+	}
 }
 
 void days10HCL::exec_trade(const std::string& id, MarketDepthData *depth, dia_group& dia,
@@ -54,7 +54,7 @@ bool days10HCL::seq_outdate(dia_group& dia, ins_data& data) {
 	return false;
 }
 
-void days10HCL::cons_10days_hcl(dia_group& dia, ins_data& data) {
+void days10HCL::cons_10days_hcl(const std::string& id, dia_group& dia, ins_data& data) {
 	if (dia.base->_state != 2)
 		return;		//构造的前10根日线都必须是已经完成的
 
@@ -70,14 +70,14 @@ void days10HCL::cons_10days_hcl(dia_group& dia, ins_data& data) {
 	data.day10slist.push_back(min);
 	data.last_kseq.date = dia.base->_date;
 	data.last_kseq.seq = dia.base->_seq;
-	print_thread_safe("[cons_10days_hcl date=%d seq=%d]取到一根已完成的K线 H=%d，C=%d，L=%d，H-C=%d，C-L=%d，min=%d\n",
-			dia.base->_date, dia.base->_seq, dia.ext->max_item.price, dia.ext->close_item.price, dia.ext->min_item.price, H_minus_C, C_minus_L, min);
+	print_thread_safe("[cons_10days_hcl date=%d seq=%d id=%s]取到一根已完成的K线 H=%d，C=%d，L=%d，H-C=%d，C-L=%d，min=%d\n",
+			dia.base->_date, dia.base->_seq, id.c_str(), dia.ext->max_item.price, dia.ext->close_item.price, dia.ext->min_item.price, H_minus_C, C_minus_L, min);
 
 	if (10 == data.day10slist.size()) {
 		__int64 sigma_10 = std::accumulate(data.day10slist.begin(), data.day10slist.end(), 0);
 		data.A = sigma_10/10;
-		print_thread_safe("[cons_10days_hcl date=%d seq=%d]已取满10根满足条件的K线，这10根K线中较小值的总和=%d，平均值A=%d\n",
-				dia.base->_date, dia.base->_seq, sigma_10, data.A);
+		print_thread_safe("[cons_10days_hcl date=%d seq=%d id=%s]已取满10根满足条件的K线，这10根K线中较小值的总和=%d，平均值A=%d\n",
+				dia.base->_date, dia.base->_seq, id.c_str(), sigma_10, data.A);
 		data.sts = STS_10KLINE_READY;
 	}
 }
@@ -91,25 +91,25 @@ void days10HCL::try_open_position(const std::string& id, MarketDepthData *depth,
 		if (depth->base.nPrice > dia.ext->open_item.price+data.A) {
 			//最新价大于当天开盘价+A，开多仓
 			data.sts = STS_OPEN_BUY;
-			print_thread_safe("[try_open_position date=%d seq=%d]当前最新价（%d）大于当天开盘价（%d）+A（%d），开多仓！\n",
-					dia.base->_date, dia.base->_seq, depth->base.nPrice, dia.ext->open_item.price, data.A);
+			print_thread_safe("[try_open_position date=%d seq=%d id=%s]当前最新价（%d）大于当天开盘价（%d）+A（%d），开多仓！\n",
+					dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, dia.ext->open_item.price, data.A);
 			exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_BUY);
 		}
 
 		if (depth->base.nPrice < dia.ext->open_item.price-data.A) {
 			//最新价小于当天开盘价-A，开空仓
 			data.sts = STS_OPEN_SELL;
-			print_thread_safe("[try_open_position date=%d seq=%d]当前最新价（%d）小于当天开盘价（%d）-A（%d），开空仓！\n",
-					dia.base->_date, dia.base->_seq, depth->base.nPrice, dia.ext->open_item.price, data.A);
+			print_thread_safe("[try_open_position date=%d seq=%d id=%s]当前最新价（%d）小于当天开盘价（%d）-A（%d），开空仓！\n",
+					dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, dia.ext->open_item.price, data.A);
 			exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_SELL);
 		}
 		return;
 	}
 
 	//未返回，说明此处这根K线处于完成状态
-	print_thread_safe("[try_open_position date=%d seq=%d]在尝试开仓过程中未找到开仓点，现取到一根已完成K线，重新构造10根K线！\n",
-			dia.base->_date, dia.base->_seq);
-	cons_10days_hcl(dia, data);
+	print_thread_safe("[try_open_position date=%d seq=%d id=%s]在尝试开仓过程中未找到开仓点，现取到一根已完成K线，重新构造10根K线！\n",
+			dia.base->_date, dia.base->_seq, id.c_str());
+	cons_10days_hcl(id, dia, data);
 }
 
 void days10HCL::try_close_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data) {
@@ -119,8 +119,8 @@ void days10HCL::try_close_position(const std::string& id, MarketDepthData *depth
 	//在K线完成过程中以止损方式平仓
 	if (STS_OPEN_BUY == data.sts && depth->base.nPrice < dia.ext->open_item.price) {
 		//在多仓情况下，最新价小于开盘价，止损
-		print_thread_safe("[try_close_position date=%d seq=%d]在平（多）仓过程中，当前最新价（%d）小于开盘价（%d），止损！\n",
-				dia.base->_date, dia.base->_seq, depth->base.nPrice, dia.ext->open_item.price);
+		print_thread_safe("[try_close_position date=%d seq=%d id=%s]在平（多）仓过程中，当前最新价（%d）小于开盘价（%d），止损！\n",
+				dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, dia.ext->open_item.price);
 		exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
 		data.sts = STS_10KLINE_READY;
 		return;
@@ -128,8 +128,8 @@ void days10HCL::try_close_position(const std::string& id, MarketDepthData *depth
 
 	if (STS_OPEN_SELL == data.sts && depth->base.nPrice > dia.ext->open_item.price) {
 		//在空仓情况下，最新价大于开盘价，止损
-		print_thread_safe("[try_close_position date=%d seq=%d]在平（空）仓过程中，当前最新价（%d）大于开盘价（%d），止损\n",
-				dia.base->_date, dia.base->_seq, depth->base.nPrice, dia.ext->open_item.price);
+		print_thread_safe("[try_close_position date=%d seq=%d id=%s]在平（空）仓过程中，当前最新价（%d）大于开盘价（%d），止损\n",
+				dia.base->_date, dia.base->_seq, id.c_str(), depth->base.nPrice, dia.ext->open_item.price);
 		exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_BUY);
 		data.sts = STS_10KLINE_READY;
 		return;
@@ -138,12 +138,12 @@ void days10HCL::try_close_position(const std::string& id, MarketDepthData *depth
 	//未返回，说明这根K线处于完成状态
 	if (dia.base->_time > m_close_time) {
 		if (STS_OPEN_BUY == data.sts) {
-			print_thread_safe("[try_close_position date=%d seq=%d]当前时间为%d，收盘平（多）仓！\n",
-					dia.base->_date, dia.base->_seq, dia.base->_time);
+			print_thread_safe("[try_close_position date=%d seq=%d id=%s]当前时间为%d，收盘平（多）仓！\n",
+					dia.base->_date, dia.base->_seq, id.c_str(), dia.base->_time);
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
 		} else {		//STS_OPEN_SELL == data.sts
-			print_thread_safe("[try_close_position date=%d seq=%d]当前时间为%d，收盘平（空）仓！\n",
-					dia.base->_date, dia.base->_seq, dia.base->_time);
+			print_thread_safe("[try_close_position date=%d seq=%d id=%s]当前时间为%d，收盘平（空）仓！\n",
+					dia.base->_date, dia.base->_seq, id.c_str(), dia.base->_time);
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_BUY);
 		}
 		data.sts = STS_INIT;
@@ -161,11 +161,9 @@ void days10HCL::execute(depth_dia_group& group) {
 void days10HCL::sts_trans(const std::string& id, MarketDepthData *depth, dia_group& dia) {
 	auto& data = m_ins_data[id];
 
-	print_thread_safe("[sts_trans date=%d seq=%d id=%s]测试当前实时图表数据\n", dia.base->_date, dia.base->_seq, id.c_str());
-
 	switch (data.sts) {
 	case STS_INIT: {
-		cons_10days_hcl(dia, data);
+		cons_10days_hcl(id, dia, data);
 		break;
 	}
 	case STS_10KLINE_READY: {

@@ -139,6 +139,11 @@ void data_manager::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_Serv
 	}
 }
 
+void data_manager::OnResponse(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data) {
+	if (Stock_Msg_SubscribeById == cmd->cmd)
+		m_data_mgr->notify_cache_over();
+}
+
 void data_manager::OnNotify(E15_ServerInfo * info,
 		E15_ServerRoute * rt,
 		E15_ServerCmd * cmd,
@@ -180,7 +185,7 @@ void data_manager::request_subscribe_by_id(E15_StringArray& sa, int start, int e
 
 	E15_String s;
 	vt.Dump(&s);
-	printf("订阅合约 start=%d, end=%d, interval=%d\n", start, end, interval);
+	print_thread_safe(g_log, "订阅合约 start=%d, end=%d, interval=%d\n", start, end, interval);
 
 
 #ifdef RUN_AS_CLIENT

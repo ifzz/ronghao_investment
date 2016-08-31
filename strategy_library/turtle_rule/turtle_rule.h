@@ -50,7 +50,7 @@ public:
 	virtual void execute(depth_dia_group& group);
 
 private:
-	void con_open_20kline(dia_group& dia, ins_data& data);
+	void con_open_20kline(dia_group& dia, ins_data& data, bool is_his);
 	void check_kavg_loca(ins_data& data);
 	void try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
 	void con_close_10kline(dia_group& dia, ins_data& data);

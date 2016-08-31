@@ -16,6 +16,13 @@ void turtle_rule::init() {
 	m_15minkline = m_type_map[m_kline].type_index;
 	m_50kavg = m_type_map[m_kline].tags[m_50kavgstr];
 	m_250kavg = m_type_map[m_kline].tags[m_250kavgstr];
+
+	for (auto& ins : m_ins_info) {
+		auto& data = m_ins_data[ins.first];
+		for_each_his_dia(ins.first, 15, "分钟", "kline", -1, [&](dia_group& dia, void *args)->void {
+			con_open_20kline(dia, data, true);
+		}, nullptr);
+	}
 }
 
 void turtle_rule::exec_trade(const std::string& id, MarketDepthData *depth, dia_group& dia,
@@ -42,18 +49,7 @@ void turtle_rule::exec_trade(const std::string& id, MarketDepthData *depth, dia_
 		m_ins_data[id].uuid = oi.uuid;
 }
 
-void turtle_rule::execute(depth_dia_group& group) {
-	if (group.dias.end() == group.dias.find(m_15minkline))
-		return;
-
-	for (auto& dia : group.dias[m_15minkline]) {
-//		print_thread_safe("[execute 当前关注K线] date=%d seq=%d state=%d\n ", dia.base->_date,
-//				dia.base->_seq, dia.base->_state);
-		sts_trans(group.ins_id, group.depth.get(), dia);
-	}
-}
-
-void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data) {
+void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data, bool is_his) {
 	if (dia.base->_state != 2)
 		return;
 
@@ -76,6 +72,9 @@ void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data) {
 	if (uni_seq.vir_seq <= data.last_klseq.vir_seq)		//如果是旧的K线，则尝试更新以前的值
 		return;
 
+	if (data.kline20.size() == 20)
+		data.kline20.pop_front();
+
 	//新的K线
 	data.kline20.push_back({dia.base->_date, dia.base->_seq, kavg50->_value, kavg250->_value,
 		dia.ext->max_item.price, dia.ext->min_item.price});
@@ -84,7 +83,7 @@ void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data) {
 	data.last_klseq.seq = dia.base->_seq;
 	print_thread_safe("[con_open_20kline]得到一根已完成的K线！date=%d seq=%d 最高价=%d 最低价=%d\n",
 			dia.base->_date, dia.base->_seq, dia.ext->max_item.price, dia.ext->min_item.price);
-	if (20 == data.kline20.size())
+	if (20 == data.kline20.size() && !is_his)
 		check_kavg_loca(data);
 }
 
@@ -171,9 +170,8 @@ void turtle_rule::try_open_position(const std::string& id, MarketDepthData *dept
 	if (dia.base->_state == 2) {
 		//在尝试开仓时遇到一根已完成的K线，重新构造新的20根K线
 		print_thread_safe("[try_open_position]在尝试开仓过程中取到一根已完成的K线，打破之前形态，重新构造！\n");
-		data.kline20.pop_front();
 		data.sts = STS_INIT;
-		con_open_20kline(dia, data);
+		con_open_20kline(dia, data, false);
 	}
 }
 
@@ -275,12 +273,20 @@ void turtle_rule::try_close_position(const std::string& id, MarketDepthData *dep
 	}
 }
 
+void turtle_rule::execute(depth_dia_group& group) {
+	if (group.dias.end() == group.dias.find(m_15minkline))
+		return;
+
+	for (auto& dia : group.dias[m_15minkline])
+		sts_trans(group.ins_id, group.depth.get(), dia);
+}
+
 void turtle_rule::sts_trans(const std::string& id, MarketDepthData *depth, dia_group& dia) {
 	auto& data = m_ins_data[id];
 
 	switch (data.sts) {
 	case STS_INIT: {
-		con_open_20kline(dia, data);
+		con_open_20kline(dia, data, false);
 		break;
 	}
 	case STS_20KLINE_ALREADY: {

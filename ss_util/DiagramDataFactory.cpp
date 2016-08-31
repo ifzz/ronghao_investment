@@ -159,7 +159,6 @@ inline int is_drop_item(MarketAnalyseDataBase * ref,MarketAnalyseDataBase * data
 	return 0;
 }
 
-
 int DiagramDataFactory::LoadCacheData(const char * data,unsigned int len,int index ,int block_size)
 {
 	int cnt = 0;
@@ -197,6 +196,9 @@ int DiagramDataFactory::LoadCacheData(const char * data,unsigned int len,int ind
 		}
 	}
 
+//	int data_index = 8;
+//	std::string ins = "ni1609";
+
 	//需要先抛弃比内存中早的数据 to be .....
 	while( len >= (unsigned int)block_size )
 	{
@@ -215,6 +217,8 @@ int DiagramDataFactory::LoadCacheData(const char * data,unsigned int len,int ind
 				item->pri->Memcpy(ptr +sizeof(MarketAnalyseDataBase) ,h->ext_len );
 			}
 			tail->AddBefore(item);
+//			if (!strcmp(ins.c_str(), m_info->id) && data_index == index)
+//				printf("[LoadCacheData] ins = %s, date = %d, seq = %d state = %d\n", ins.c_str(), item->base._date, item->base._seq, item->base._state);
 		}
 		cnt++;
 		if( len < (unsigned int)block_size )

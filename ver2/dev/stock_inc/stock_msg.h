@@ -36,6 +36,8 @@ enum  Stock_Msg
 	Stock_Msg_DiagramCacheData, //衔接实时数据和历史数据的中间数据
 	Stock_Msg_DiagramCacheTag,	//衔接实时数据和历史数据的中间tag
 
+	Stock_Msg_ReqDiagramCache,
+
 	Stock_Msg_Max,
 
 };
@@ -50,9 +52,10 @@ enum Trade_Msg
 	Trade_Msg_SnatchOver, 		//抢单完成
 	Trade_Msg_ShowTime,
 
-	Trade_Msg_StrategeOpen,			//程序化策率开仓
-	Trade_Msg_StrategeClose,		//程序化策率平仓
+	Trade_Msg_StrategeOpen,				//程序化策率开仓
+	Trade_Msg_StrategeClose,			//程序化策率平仓
 	Trade_Msg_StrategeForceClose,	//程序化强制平仓，用于风控
+	Trade_Msg_StrategeTradeResult,//交易状态报告(status = 0，交易完结)
 
 	Trade_Msg_Max
 };

@@ -1,7 +1,9 @@
 #include "rhafx.h"
 
+E15_Log g_log;		//整个策略框架共用同一个日志
 crx::evd_thread_pool g_log_th;
 std::shared_ptr<log_handle> g_log_hd;
+
 stg_config g_conf;
 
 datetime get_current_datetime() {
@@ -156,7 +158,18 @@ void sb_impl::on_init() {
 	}
 	strategy_config += "\n###############################################################\n";
 	m_this_stg->print_thread_safe(strategy_config.c_str());
+
+	file_dia.base = new MarketAnalyseDataBase;
+	file_dia.ext = new MarketAnalyseKline;
+	for (int i = 0; i < 32; ++i) {
+		file_dia.tags.push_back(new MarketAnalyseTagBase);
+		file_dia.tag_mode.push_back(-1);
+	}
 	m_this_stg->init();
+	delete file_dia.base;
+	delete file_dia.ext;
+	for (auto& tag : file_dia.tags)
+		delete tag;
 }
 
 void strategy_base::request_trade(const std::string& ins_id, order_instruction& oi) {
@@ -231,36 +244,56 @@ void strategy_base::request_trade(const std::string& ins_id, order_instruction& 
 	fflush(impl->m_trade_import);
 }
 
-void strategy_base::for_each_his_dia(const std::string& id, long param, const std::string& name, const std::string& class_name, unsigned int date,
-		std::function<void(dia_group&, void*)> f, void *args) {
-	sb_impl *impl = static_cast<sb_impl*>(m_obj);
-	impl->f = std::move(f);
-	impl->args = args;
+void strategy_base::for_each_his_dia(const std::string& id, long param, const std::string& name, const std::string& class_name,
+		int date, std::function<void(dia_group&, void*)> f, void *args) {
+	if (date > 0)		//0表示当天历史，-1表示前一天历史，依次类推
+		return;
 
-	impl->dia.base = new MarketAnalyseDataBase;
-	impl->dia.ext = new MarketAnalyseKline;
-	for (int i = 0; i < 32; ++i) {
-		impl->dia.tags.push_back(new MarketAnalyseTagBase);
-		impl->dia.tag_mode.push_back(-1);
-	}
-	impl->dia.mode = -1;
+	sb_impl *impl = static_cast<sb_impl*>(m_obj);
+	auto& cache = impl->cache[id];
+	cache.f = std::move(f);
+	cache.args = args;
+	impl->file_dia.mode = -1;
 
 	short store_level = 0;
 	if (name == "日" || name == "周" || name == "月")
 		store_level = 1;
-	MarketDataType dt = {0, 0, param, name.c_str(), class_name.c_str(), store_level};
-	impl->m_mgr_ptr->load_dia_history(id, dt, date, m_obj);
 
-	delete impl->dia.base;
-	delete impl->dia.ext;
-	for (auto& tag : impl->dia.tags)
-		delete tag;
+	datetime cdt = get_current_datetime();
+	date += cdt.date;
+
+	//历史文件
+	impl->file_dia.base->_date = date;
+	impl->file_dia.base->_seq = 0;
+	MarketDataType dt = {0, 0, param, name.c_str(), class_name.c_str(), store_level};
+	impl->m_mgr_ptr->load_dia_history(id, dt, date, cdt.date, m_obj);
+
+	int market = MarketCodeById(id.c_str());
+	DiagramDataMgr *stock = DiagramDataMgr_PeekData(market, id.c_str());
+	if (!stock)
+		return;
+
+	std::string kline = std::to_string(param)+name+class_name;
+	int data_index = m_type_map[kline].type_index;
+	DiagramDataHandler *h = (DiagramDataHandler*)stock->factory->m_data->At(data_index, 0);
+	if (!h)
+		return;
+
+	cache.cache_dia[data_index].mode = -1;
+	for (int i = 0; i < 32; ++i) {
+		cache.cache_dia[data_index].tags.push_back(nullptr);
+		cache.cache_dia[data_index].tag_mode.push_back(-1);
+	}
+
+	//在加载历史文件时有最后一根K线未被执行，需要和历史缓存比较是否是已完成
+	stock->lock.Lock();
+	impl->m_mgr_ptr->load_dia_hiscache(id, data_index, h, store_level, m_obj);		//历史缓存
+	stock->lock.Unlock();
 }
 
 ss_util::ss_util()
 :m_ins_list(nullptr)
 ,m_diagram_info(nullptr)
-,m_cache_over(false)
 ,m_history_store(nullptr) {}
 
 ss_util::~ss_util() {
@@ -343,9 +376,6 @@ int ss_util::handle_contract_info(E15_Key *key, E15_Value *info, ss_util *mgr_pt
 	data->info.Multiple = info->BaseS("Multiple");
 
 	auto& ins_info = mgr_ptr->m_ins_info;
-	if (ins_info.end() != ins_info.find(id))
-		return 0;
-	ins_info[id] = contract_info();
 	ins_info[id].type = s_ins_type++;
 	ins_info[id].detail = data->info;
 //	printf("contract info:: id=%s, tick=%ld, multiple=%ld, type=%ld\n", id, data->info.price_tick,
@@ -387,7 +417,6 @@ int ss_util::handle_diagram_item(E15_Key * key,E15_Value * info,DiagramDataMgr *
 	if( parent_index == (unsigned int)-1) //这个是数据
 	{
 		stock->factory->OnData(stock->depth, mode, index, s);
-//		printf("@@@@@@@@@@@@@ mode=%d index = %d\n", mode, index);
 		return 0;
 	}
 
@@ -395,47 +424,113 @@ int ss_util::handle_diagram_item(E15_Key * key,E15_Value * info,DiagramDataMgr *
 	return 0;
 }
 
-void ss_util::load_dia_history(const std::string& id, MarketDataType& dt, unsigned int date, void *obj) {
+void ss_util::load_dia_history(const std::string& id, MarketDataType& dt, unsigned int date, unsigned int cdate, void *obj) {
 	int market = MarketCodeById(id.c_str());
-	datetime cdt = get_current_datetime();
-	if (!date)
-		date = cdt.date;
-
 	if (!dt.store_level) {		//存储级别为0，加载的是day目录下的历史图表
-		//加载的是当天的历史数据
-		m_history_store->LoadDiaHistory(ss_util::get_dia_history, obj, market, id.c_str(), &dt, date);
+		for (; date <= cdate; ++date)		//包括当天的历史
+			m_history_store->LoadDiaHistory(ss_util::get_dia_history, obj, market, id.c_str(), &dt, date);
 		return;
 	}
 
 	//存储级别为1，加载的是year目录下的历史图表
-	while (date != cdt.date) {
+	for (; date < cdate; ++date)		//不包括当天的历史
 		m_history_store->LoadDiaHistory(ss_util::get_dia_history, obj, market, id.c_str(), &dt, date, 0, 1, 1);
-		date++;
-	}
 }
 
 int ss_util::get_dia_history(void * obj,int market,const char * id,MarketDataType * dt,MarketDataType * tt,
 			HistoryDiaBase * base,const char * ext_data,int len) {
 	sb_impl *impl = static_cast<sb_impl*>(obj);
 	if (!tt) {		//当前得到的是一个data
-		if (1 == impl->dia.mode)
-			impl->f(impl->dia, impl->args);
+		if (1 == impl->file_dia.mode) {
+			auto& cache = impl->cache[id];
+			cache.f(impl->file_dia, cache.args);
+		}
 
-		*impl->dia.base = *base->data_base;
-		impl->dia.base->_state = 2;
+		*impl->file_dia.base = *base->data_base;
+		if (!impl->file_dia.base->_state)
+			impl->file_dia.base->_state = 2;
 		if (len && len == sizeof(MarketAnalyseKline))
-			memcpy(impl->dia.ext, ext_data, len);
-		impl->dia.mode = 1;
-		for (auto& tag_mode : impl->dia.tag_mode)
+			memcpy(impl->file_dia.ext, ext_data, len);
+		impl->file_dia.mode = 1;
+		for (auto& tag_mode : impl->file_dia.tag_mode)
 			tag_mode = -1;
 	} else {		//得到的是一个tag
 		std::string data_name = std::to_string(dt->param)+dt->name+dt->class_name;
 		std::string tag_name = std::to_string(tt->param)+tt->name+tt->class_name;
 		int tag_idx = impl->m_this_stg->m_type_map[data_name].tags[tag_name];
-		*impl->dia.tags[tag_idx] = *base->tag_base;
-		impl->dia.tag_mode[tag_idx] = 1;
+		*impl->file_dia.tags[tag_idx] = *base->tag_base;
+		impl->file_dia.tag_mode[tag_idx] = 1;
 	}
 	return 1;
+}
+
+void ss_util::load_dia_hiscache(const std::string& id, int data_index, DiagramDataHandler *h, short store_level, void *obj) {
+	sb_impl *impl = static_cast<sb_impl*>(obj);
+	if (!h->m_data->Count())
+		return;		//没有缓存，直接退出
+
+	DiagramDataItem *item = (DiagramDataItem*)h->m_data->Tail(0);
+	if (-1 == impl->file_dia.mode) {		//没有加载到历史文件，一直加载直到缓存的最后第二根K线
+		wd_seq fseq, cseq;
+		fseq.date = impl->file_dia.base->_date;
+		fseq.seq = impl->file_dia.base->_seq;
+
+		for (unsigned long i = 0; i < h->m_data->Count()-1; ++i) {
+			DiagramDataItem* it = (DiagramDataItem*)h->m_data->At(i, 0);
+			cseq.date = it->base._date;
+			cseq.seq = it->base._seq;
+			if (cseq.vir_seq < fseq.vir_seq)
+				continue;
+
+			load_cache_forstg(id, data_index, it, impl, true);
+		}
+		load_cache_forstg(id, data_index, item, impl, false);
+		return;
+	}
+
+	if (1 == impl->file_dia.mode) {
+		while (true) {
+			if (item->base._date == impl->file_dia.base->_date &&
+					item->base._seq == impl->file_dia.base->_seq)		//在缓存中找到历史文件中的最后一根K线
+				break;
+
+			DiagramDataItem *temp = (DiagramDataItem*)item->Pre();
+			if (!temp) {		//已比较到缓存中的第一根K线，说明没找到历史文件的最后一根K线
+				auto& cache = impl->cache[id];
+				cache.f(impl->file_dia, cache.args);
+				break;
+			}
+			item = temp;
+		}
+
+		//从当前这个item一直执行到缓存的最后第二根K线
+		while (item->Next()) {
+			load_cache_forstg(id, data_index, item, impl, true);
+			item = (DiagramDataItem*)item->Next();
+		}
+		load_cache_forstg(id, data_index, item, impl, false);
+	}
+}
+
+void ss_util::load_cache_forstg(const std::string& id, int data_index, DiagramDataItem *item, sb_impl *impl, bool exec) {
+	auto& cache = impl->cache[id];
+	cache.cache_dia[data_index].base = &item->base;
+	if (item->pri && item->pri->Length() == sizeof(MarketAnalyseKline))
+		cache.cache_dia[data_index].ext = (MarketAnalyseKline*)item->pri->c_str();
+	cache.cache_dia[data_index].mode = 1;
+	for (auto& tag_mode : cache.cache_dia[data_index].tag_mode)
+		tag_mode = -1;
+
+	for (int i = 0; i < item->tag_cnt; ++i) {
+		DiagramTag *tag = item->PeekTag(i);
+		if (!tag)
+			continue;
+
+		cache.cache_dia[data_index].tags[i] = &tag->base;
+		cache.cache_dia[data_index].tag_mode[i] = 1;
+	}
+	if (exec)
+		cache.f(cache.cache_dia[data_index], cache.args);
 }
 
 void ss_util::parse_cache_diagroup(E15_ServerCmd *cmd, const char *data, int len) {
@@ -446,32 +541,31 @@ void ss_util::parse_cache_diagroup(E15_ServerCmd *cmd, const char *data, int len
 	m_unzip.unzip(data+DEPTH_MARKET_HEAD_LEN, len-DEPTH_MARKET_HEAD_LEN);
 	m_unzip.unzip_end();
 
-	stock->lock.Lock();
-	do {
-		if (!stock->factory)
-			break;
-		if (Stock_Msg_DiagramCacheData == cmd->cmd)
-			stock->factory->LoadCacheData(m_unzip_buffer.c_str(), m_unzip_buffer.Length(), cmd->receiver.l, cmd->status);
-		else		//Stock_Msg_DiagramCacheTag == cmd->cmd
-			stock->factory->LoadCacheTag(m_unzip_buffer.c_str(), m_unzip_buffer.Length(), cmd->receiver.l, cmd->receiver.h, cmd->status);
-	} while (0);
-	stock->lock.Unlock();
+	if (Stock_Msg_DiagramCacheData == cmd->cmd)
+		stock->factory->LoadCacheData(m_unzip_buffer.c_str(), m_unzip_buffer.Length(), cmd->receiver.l, cmd->status);
+	else		//Stock_Msg_DiagramCacheTag == cmd->cmd
+		stock->factory->LoadCacheTag(m_unzip_buffer.c_str(), m_unzip_buffer.Length(), cmd->receiver.l, cmd->receiver.h, cmd->status);
 }
 
 void ss_util::make_index_for_cache() {
 	dia_group group;
-	for (auto& ins : m_ins_info) {
-		int market = MarketCodeById(ins.first.c_str());
-		DiagramDataMgr *stock = DiagramDataMgr_GetData(market, ins.first.c_str(), 0, 1);
+	for (auto& info : m_ins_info) {
+		int market = MarketCodeById(info.first.c_str());
+		DiagramDataMgr *stock = DiagramDataMgr_GetData(market, info.first.c_str(), 0, 1);
 		for (unsigned long i = 0; i < stock->factory->m_data->Count(); ++i) {
-			auto& cache_list = m_dia_cache[ins.first][i];
+			auto& cache_list = info.second.dia_cache[i];
 			DiagramDataHandler *h = (DiagramDataHandler*)stock->factory->m_data->At(i, 0);
-			for (unsigned long j = 0; j < h->m_data->Count(); ++j) {
+			for (size_t j = 0; j < h->m_data->Count(); ++j) {
 				DiagramDataItem *item = (DiagramDataItem*)h->m_data->At(j, 0);
+				//base & ext
 				group.base = &item->base;
+				if (!group.base->_state)
+					group.base->_state = 2;
 				group.ext = (MarketAnalyseKline*)item->pri->c_str();
 				group.mode = 1;
-				for (int k = 0; k < item->tag_cnt; ++i) {
+
+				//tag
+				for (int k = 0; k < item->tag_cnt; ++k) {
 					DiagramTag *tag = item->PeekTag(k);
 					if (tag) {
 						group.tags.push_back(&tag->base);
@@ -481,6 +575,7 @@ void ss_util::make_index_for_cache() {
 						group.tag_mode.push_back(-1);
 					}
 				}
+
 				cache_list.push_back(group);
 				group.tags.clear();
 				group.tag_mode.clear();
@@ -509,7 +604,9 @@ depth_dia_group ss_util::parse_diagram_group(const char *data, int len) {
 
 	E15_ValueTable *dia_vt = m_vt.TableS("dia");
 	if (dia_vt) {
+		stock->lock.Lock();
 		dia_vt->each((int (*)(E15_Key * key,E15_Value * info,void *))handle_diagram_item, stock);
+		stock->lock.Unlock();
 		for (auto& raw : g_dia_deq) {
 			dia_group g;
 			g.base = &raw.data->base;

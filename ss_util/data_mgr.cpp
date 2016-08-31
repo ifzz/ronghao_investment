@@ -45,6 +45,11 @@ DiagramDataItem::~DiagramDataItem()
 	delete pri;
 }
 
+void DiagramDataItem::tag_reset() {
+	for (int i = 0; i < tag_cnt; ++i)
+		delete tags[i];
+}
+
 DiagramTag * DiagramDataItem::PeekTag(int index)
 {
 	if( !tags )

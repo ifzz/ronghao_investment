@@ -16,7 +16,6 @@ struct bikavg {
 	unsigned int date;
 	unsigned int seq;
 	__int64 bi;
-	__int64 kavg60;
 };
 
 struct ins_data {
@@ -51,12 +50,12 @@ public:
 
 private:
 	bool prev_twistbi_changed(dia_group& dia, ins_data& data);
-	void twist_init(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
-	void cons_ding_form(MarketAnalyseTagBase *twist, MarketAnalyseTagBase *kavg60, MarketAnalyseKline *ext, ins_data& data);
-	void cons_di_form(MarketAnalyseTagBase *twist, MarketAnalyseTagBase *kavg60, MarketAnalyseKline *ext, ins_data& data);
-	bool check_twistbi_exist(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
+	void twist_init(const std::string& id, dia_group& dia, ins_data& data);
+	void cons_ding_form(MarketAnalyseTagBase *twist, MarketAnalyseKline *ext, ins_data& data);
+	void cons_di_form(MarketAnalyseTagBase *twist, MarketAnalyseKline *ext, ins_data& data);
+	bool check_twistbi_exist(const std::string& id, dia_group& dia, ins_data& data);
 	void record_last_twistbi(dia_group& dia, ins_data& data);
-	bool try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data, bool check_twistbi);
+	void try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
 	void try_close_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
 
 	void sts_trans(const std::string& id, MarketDepthData *depth, dia_group& dia);
@@ -65,6 +64,6 @@ private:
 
 private:
 	std::string m_kline;
-	int32_t m_5minkline_idx, m_twistbi_idx, m_60avg_idx;
+	int32_t m_5minkline_idx, m_twistbi_idx;
 	std::map<std::string, ins_data> m_ins_data;
 };

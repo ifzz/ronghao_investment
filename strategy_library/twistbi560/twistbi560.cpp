@@ -13,7 +13,13 @@ void twistbi560::read_conf(std::map<std::string, const char*>& conf) {
 void twistbi560::init() {
 	m_5minkline_idx = m_type_map[m_kline].type_index;
 	m_twistbi_idx = m_type_map[m_kline].tags["0笔twist_bi"];
-	m_60avg_idx = m_type_map[m_kline].tags["60均线kavg"];
+
+	for (auto& ins_info : m_ins_info) {
+		auto& data = m_ins_data[ins_info.first];
+		for_each_his_dia(ins_info.first, 5, "分钟", "kline", -1, [&](dia_group& dia, void *args)->void {
+			twist_init(ins_info.first, dia, data);
+		}, nullptr);
+	}
 }
 
 void twistbi560::exec_trade(const std::string& id, MarketDepthData *depth, dia_group& dia,
@@ -78,11 +84,11 @@ bool twistbi560::prev_twistbi_changed(dia_group& dia, ins_data& data) {
 	return false;
 }
 
-void twistbi560::twist_init(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data) {
+void twistbi560::twist_init(const std::string& id, dia_group& dia, ins_data& data) {
+	if (-1 == dia.tag_mode[m_twistbi_idx])
+		return;
+
 	MarketAnalyseTagBase *twist = dia.tags[m_twistbi_idx];
-	MarketAnalyseTagBase *kavg60 = dia.tags[m_60avg_idx];
-	if (!twist || !kavg60 || 0 == twist->_type)
-		return;		//未知类型的bi
 
 	wd_seq cur_seq;
 	cur_seq.date = twist->_date;
@@ -99,53 +105,52 @@ void twistbi560::twist_init(const std::string& id, MarketDepthData *depth, dia_g
 	}
 
 	if (twist->_type > 0)		//ding
-		cons_ding_form(twist, kavg60, dia.ext, data);
+		cons_ding_form(twist, dia.ext, data);
 	else		//twist->_type < 0		//di
-		cons_di_form(twist, kavg60, dia.ext, data);
+		cons_di_form(twist, dia.ext, data);
 	data.bi_seq.date = twist->_date;		//最新的bi
 	data.bi_seq.seq = twist->_seq;
 
+	data.sts = STS_INIT;
 	if (3 == data.bi_di.size() && 3 == data.bi_ding.size()) {
-		print_thread_safe("[twist_init]已取满所有的ding和di，尝试开仓！\n");
-		if (!try_open_position(id, depth, dia, data, false))		//尝试开仓
-			data.sts = STS_TBI_OVER;
+		print_thread_safe("[twist_init]已取满所有的ding和di！\n");
+		data.sts = STS_TBI_OVER;
 	}
 }
 
-void twistbi560::cons_ding_form(MarketAnalyseTagBase *twist, MarketAnalyseTagBase *kavg60,
-		MarketAnalyseKline *ext, ins_data& data) {
+void twistbi560::cons_ding_form(MarketAnalyseTagBase *twist, MarketAnalyseKline *ext, ins_data& data) {
 	if (!data.bi_ding.empty() && data.bi_ding.back().bi <= twist->_value)
 		data.bi_ding.clear();		//ding的形态被破坏，将之前的ding清空
 
 	if (data.bi_ding.size() == 3)
 		data.bi_ding.pop_front();
 
-	data.bi_ding.push_back({twist->_date, twist->_seq, twist->_value, kavg60->_value});
+	data.bi_ding.push_back({twist->_date, twist->_seq, twist->_value});
 	data.last_ding = twist->_value;
 	data.last_macd_diff = ext->diff;
 	print_thread_safe("[cons_ding_form] 取到的是ding（%d），value=%d, seq=%d, date=%d\n",
 			data.bi_ding.size(), twist->_value, twist->_seq, twist->_date);
 }
 
-void twistbi560::cons_di_form(MarketAnalyseTagBase *twist, MarketAnalyseTagBase *kavg60,
-		MarketAnalyseKline *ext, ins_data& data) {
+void twistbi560::cons_di_form(MarketAnalyseTagBase *twist, MarketAnalyseKline *ext, ins_data& data) {
 	if (!data.bi_di.empty() && data.bi_di.back().bi >= twist->_value)
 		data.bi_di.clear();		//di的形态被破坏，将之前的di清空
 
 	if (data.bi_di.size() == 3)
 		data.bi_di.pop_front();
 
-	data.bi_di.push_back({twist->_date, twist->_seq, twist->_value, kavg60->_value});
+	data.bi_di.push_back({twist->_date, twist->_seq, twist->_value});
 	data.last_di = twist->_value;
 	data.last_macd_diff = ext->diff;
 	print_thread_safe("[cons_di_form] 取到的是di（%d），value=%d, seq=%d, date=%d\n",
 			data.bi_di.size(), twist->_value, twist->_seq, twist->_date);
 }
 
-bool twistbi560::check_twistbi_exist(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data) {
-	MarketAnalyseTagBase *twist = dia.tags[m_twistbi_idx];
-	if (!twist || 0 == twist->_type)
+bool twistbi560::check_twistbi_exist(const std::string& id, dia_group& dia, ins_data& data) {
+	if (-1 == dia.tag_mode[m_twistbi_idx])
 		return false;
+
+	MarketAnalyseTagBase *twist = dia.tags[m_twistbi_idx];
 
 	wd_seq cur_seq;
 	cur_seq.date = twist->_date;
@@ -161,49 +166,44 @@ bool twistbi560::check_twistbi_exist(const std::string& id, MarketDepthData *dep
 	print_thread_safe("[check_twistbi_exist]在尝试开仓过程中检测到有新的twistbi value=%d, seq=%d, date=%d\n",
 			twist->_value, twist->_seq, twist->_date);
 	data.sts = STS_INIT;
-	twist_init(id, depth, dia, data);
+	twist_init(id, dia, data);
 	return true;
 }
 
-bool twistbi560::try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia,
-		ins_data& data, bool check_twistbi) {
-	//尝试开仓是需要时刻关注最新的bi有没有破坏当前的形态，若是则重新选取
-	if (check_twistbi && check_twistbi_exist(id, depth, dia, data))
-		return false;
+void twistbi560::try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data) {
+	//尝试开仓时需要关注最新的bi有没有破坏当前的形态，若是则重新选取
+	if (check_twistbi_exist(id, dia, data))
+		return;
 
 	wd_seq cur_seq;
 	cur_seq.date = dia.base->_date;
 	cur_seq.seq = dia.base->_seq;
-	if (cur_seq.vir_seq < data.kline_seq.vir_seq) {
-		return false;
-	} else {
-		data.kline_seq.date = dia.base->_date;
-		data.kline_seq.seq = dia.base->_seq;
-	}
+	if (cur_seq.vir_seq < data.kline_seq.vir_seq)
+		return;
 
-	if (data.last_macd_diff > 0 && dia.ext->close_item.price > data.bi_ding.back().bi) {
+	data.kline_seq.date = dia.base->_date;
+	data.kline_seq.seq = dia.base->_seq;
+
+	if (data.last_macd_diff > 0 && depth->base.nPrice > data.bi_ding.back().bi) {
 		data.sts = STS_OPEN_BUY;		//开多仓
-		exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_BUY);
 		print_thread_safe("[try_open_position date=%d seq=%d]当前K线的最新价为%d，最近的ding的值为%d，macd中diff字段"
-				"的值为%d（>0），开多仓！\n", dia.base->_date, dia.base->_seq, dia.ext->close_item.price, data.bi_ding.back().bi, dia.ext->diff);
-		return true;
+				"的值为%d（>0），开多仓！\n", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.bi_ding.back().bi, dia.ext->diff);
+		exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_BUY);
 	}
 
-	if (data.last_macd_diff < 0 && dia.ext->close_item.price < data.bi_di.back().bi) {
+	if (data.last_macd_diff < 0 && depth->base.nPrice < data.bi_di.back().bi) {
 		data.sts = STS_OPEN_SELL;		//开空仓
-		exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_SELL);
 		print_thread_safe("[try_open_position date=%d seq=%d]当前K线的最新价为%d，最近的di的值为%d，macd中diff字段"
-				"的值为%d（<0），开空仓！\n", dia.base->_date, dia.base->_seq, dia.ext->close_item.price, data.bi_di.back().bi, dia.ext->diff);
-		return true;
+				"的值为%d（<0），开空仓！\n", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.bi_di.back().bi, dia.ext->diff);
+		exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_SELL);
 	}
-
-	return false;
 }
 
 void twistbi560::record_last_twistbi(dia_group& dia, ins_data& data) {
-	MarketAnalyseTagBase *twist = dia.tags[m_twistbi_idx];
-	if (!twist || 0 == twist->_type)
+	if (-1 == dia.tag_mode[m_twistbi_idx])
 		return;		//无效的bi
+
+	MarketAnalyseTagBase *twist = dia.tags[m_twistbi_idx];
 
 	//在开仓之后不管之前的形态是否发生破坏，都只需要记录最新的ding和最新的di，观察是否需要平仓
 	wd_seq cur_seq;
@@ -228,32 +228,27 @@ void twistbi560::try_close_position(const std::string& id, MarketDepthData *dept
 	wd_seq cur_seq;
 	cur_seq.date = dia.base->_date;
 	cur_seq.seq = dia.base->_seq;
-	if (cur_seq.vir_seq < data.kline_seq.vir_seq) {
+	if (cur_seq.vir_seq < data.kline_seq.vir_seq)
 		return;
-	} else {
-		data.kline_seq.date = dia.base->_date;
-		data.kline_seq.seq = dia.base->_seq;
-	}
+
+	data.kline_seq.date = dia.base->_date;
+	data.kline_seq.seq = dia.base->_seq;
 
 	bool close = false;
-	if (STS_OPEN_BUY == data.sts) {
-		//平多仓
-		if (dia.ext->close_item.price < data.last_di) {
-			data.sts = STS_CLOSE_SELL;
-			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
-			print_thread_safe("[try_close_position]当前K线的最新价为%d，最新的di的值为%d，该di的序列号为%d，平多仓！\n",
-					dia.ext->close_item.price, data.last_di, dia.base->_seq);
-			close = true;
-		}
-	} else if (STS_OPEN_SELL == data.sts) {
-		//平空仓
-		if (dia.ext->close_item.price > data.last_ding) {
-			data.sts = STS_CLOSE_BUY;
-			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_BUY);
-			print_thread_safe("[try_close_position]当前K线的最新价为%d，最新的ding的值为%d，该ding的序列号为%d，平空仓！\n",
-					dia.ext->close_item.price, data.last_ding, dia.base->_seq);
-			close = true;
-		}
+	if (STS_OPEN_BUY == data.sts && depth->base.nPrice < data.last_di) {		//平多仓
+		data.sts = STS_CLOSE_SELL;
+		print_thread_safe("[try_close_position date=%d seq=%d]当前K线的最新价为%d，小于最新的di的值%d，平多仓！\n",
+				dia.base->_date, dia.base->_seq, depth->base.nPrice, data.last_di);
+		exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
+		close = true;
+	}
+
+	if (STS_OPEN_SELL == data.sts && dia.ext->close_item.price > data.last_ding) {		//平空仓
+		data.sts = STS_CLOSE_BUY;
+		print_thread_safe("[try_close_position date=%d seq=%d]当前K线的最新价为%d，大于最新的ding的值%d，平空仓！\n",
+				dia.base->_date, dia.base->_seq, depth->base.nPrice, data.last_ding);
+		exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_BUY);
+		close = true;
 	}
 
 	if (close) {
@@ -271,16 +266,6 @@ void twistbi560::execute(depth_dia_group& group) {
 		sts_trans(group.ins_id, group.depth.get(), dia);
 }
 
-/**
- * 当前这个策略只关注5分钟K线
- * 选取twist_bi中连续的三个顶和三个底，并且这三个顶和底都在60均线之上，要求三个顶的值连续递减且三个底的值连续
- * 递增，并且三个顶的值都大于三个底的值，满足以上条件之后，若进一步有当前K线的最新价大于三个顶中最新的那个顶
- * 的值并且macd中的diff字段大于0，那么就开多仓，反之三个顶和三个底都在60均线之下，并且如果最新价小于最新的
- * 那个底的值并且macd中的diff小于0，那么开空仓
- * ->对于多仓，若当前K线的最新价小于最新的底的值那么平多仓
- * ->对于空仓，若当前K线的最新价大于最新的顶的值那么平空仓
- */
-
 void twistbi560::sts_trans(const std::string& id, MarketDepthData *depth, dia_group& dia) {
 	if (m_ins_data.end() == m_ins_data.find(id))
 		m_ins_data[id] = ins_data();
@@ -288,11 +273,11 @@ void twistbi560::sts_trans(const std::string& id, MarketDepthData *depth, dia_gr
 
 	switch (data.sts) {
 	case STS_INIT: {		//初始
-		twist_init(id, depth, dia, data);
+		twist_init(id, dia, data);
 		break;
 	}
 	case STS_TBI_OVER: {
-		try_open_position(id, depth, dia, data, true);
+		try_open_position(id, depth, dia, data);
 		break;
 	}
 	case STS_OPEN_BUY:

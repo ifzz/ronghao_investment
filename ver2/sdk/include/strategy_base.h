@@ -123,7 +123,7 @@ public:
 	 * @date：指定日期，从date开始加载一直到当前时点
 	 * @f/args：回调及参数
 	 */
-	void for_each_his_dia(const std::string& id, long param, const std::string& name, const std::string& class_name, unsigned int date,
+	void for_each_his_dia(const std::string& id, long param, const std::string& name, const std::string& class_name, int date,
 			std::function<void(dia_group&, void*)> f, void *args);
 
 	/**

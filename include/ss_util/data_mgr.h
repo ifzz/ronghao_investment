@@ -49,6 +49,8 @@ public:
 
 	DiagramTag * PeekTag(int index);
 
+	void tag_reset();
+
 public:
 	DiagramDataItem(int tag_cnt);
 	virtual ~DiagramDataItem();
@@ -164,6 +166,7 @@ private:
 
 
 public:
+
 	E15_Queue * 	m_data; 	//待显示绘制数据
 	E15_Queue *		m_sub;		//tag的类型描述
 

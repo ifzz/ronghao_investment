@@ -35,7 +35,7 @@ public:
 
 private:
 	bool seq_outdate(dia_group& dia, ins_data& data);
-	void cons_10days_hcl(dia_group& dia, ins_data& data);
+	void cons_10days_hcl(const std::string& id, dia_group& dia, ins_data& data);
 	void try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
 	void try_close_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);
 

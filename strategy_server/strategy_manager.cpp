@@ -1,6 +1,5 @@
 #include "strategy_manager.h"
 
-E15_Log g_log;		//整个策略框架共用同一个日志
 E15_Socket g_socket;
 static strategy_manager g_mgr;
 
@@ -14,7 +13,29 @@ processor::processor(strategy_manager *mgr_ptr)
 void processor::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 	auto j = std::dynamic_pointer_cast<strategy_job>(job);
 	if (g_conf.for_produce) {		//生产环境
-		m_strategy->execute(j->group);
+		sb_impl *impl = static_cast<sb_impl*>(m_strategy->m_obj);
+		auto& real_group = j->group;
+		auto& id = real_group.ins_id;
+
+		//有可能需要cache中的最后一根K线继续初始化
+		if (impl->cache.end() != impl->cache.find(id)) {
+			//策略中可能会加载多种类型K线的历史
+			auto& cache = impl->cache[id];
+			for (auto it = cache.cache_dia.begin(); it != cache.cache_dia.end(); ) {
+				auto& real_dia = real_group.dias[it->first].back();		//取最新的比较
+				if (real_dia.base->_date == it->second.base->_date &&
+						real_dia.base->_seq == it->second.base->_seq)
+					it = cache.cache_dia.erase(it);
+				else
+					++it;
+			}
+
+			for (auto& dia : cache.cache_dia)
+				cache.f(dia.second, cache.args);
+			impl->cache.erase(id);
+		}
+
+		m_strategy->execute(real_group);
 	} else {		//测试环境
 		int32_t cmd = Stock_Msg_DiagramGroup;
 		m_seria.insert("cmd", (const char*)&cmd, sizeof(cmd));
@@ -38,7 +59,7 @@ bool processor::load_share_for_produce(void *handle, const std::string& l, const
 	impl->m_stg_id = 0;
 	impl->m_src_id = 0;
 	impl->read_config(c.c_str());		//读配置
-	impl->on_init();		//初始化
+//	impl->on_init();		//初始化
 	print_thread_safe(g_log, "[strategy manager] create strategy instance with "
 			"library name `%s` successfully!\n", l.c_str());
 	return true;
@@ -215,8 +236,22 @@ void strategy_manager::auto_load_stg() {
 
 void strategy_manager::sub_and_load(bool is_resub) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(20));
-	if (g_conf.sub_all) {		//订阅所有行情时不管是否需要重新订阅
-		m_data_recv->request_subscribe_all();
+	if (g_conf.sub_all) {		//使用request_subscribe_by_id接口订阅所有行情，因为需要cache
+		E15_StringArray sa;
+		for (auto& ins : m_ins_info)
+			sa.Add(ins.first.data(), ins.first.size());
+		m_data_recv->request_subscribe_by_id(sa, 0, 0, 0);
+
+		{
+			std::unique_lock<std::mutex> lck(m_cache_mtx);
+			if (!m_cache_over)		//cache还没完全接收，等待cache完成或cache终止
+				m_cache_cv.wait(lck, [&]()->bool { return m_cache_over || m_cache_cancel; });
+		}
+
+		if (m_cache_cancel) {
+			print_thread_safe(g_log, "与图表服务器断开之后重新连接，终止之前缓存的接收！\n");
+			return;
+		}
 	} else if (is_resub) {
 		for (auto& l : m_libraries)
 			for (auto& c : l.second.ini_map)
@@ -226,6 +261,17 @@ void strategy_manager::sub_and_load(bool is_resub) {
 
 	if (!is_resub)		//首次订阅时需要自动加载既定策略
 		auto_load_stg();
+}
+
+void strategy_manager::notify_cache_over() {
+	make_index_for_cache();
+	print_thread_safe(g_log, "已处理完成所有合约的缓存数据，开始加载策略！\n");
+
+	{
+		std::unique_lock<std::mutex> lck(m_cache_mtx);
+		m_cache_over = true;
+		m_cache_cv.notify_one();
+	}
 }
 
 void strategy_manager::data_dispatch(E15_ServerCmd *cmd, E15_String *&data) {
@@ -242,24 +288,35 @@ void strategy_manager::data_dispatch(E15_ServerCmd *cmd, E15_String *&data) {
 	}
 
 	case Stock_Msg_DiagramInfo: {			//diagram description info
-		bool is_resub = false;
+		int is_resub = 0;
 		if (m_diagram_info) {		//重新订阅
 			delete m_diagram_info;
-			is_resub = true;
+			is_resub = 1;
 		}
 
 		parse_diagram_info(data->c_str(), data->Length());
 		m_diagram_info = data;
 		data = nullptr;
 		print_thread_safe(g_log, "strategy_manager[%d] 收到收到指标描述信息 bytes=%ld\n", getpid(), m_diagram_info->Length());
-		sub_and_load(is_resub);
+		std::string cmd_str = "l __automatic "+std::to_string(is_resub);
+
+		if (is_resub && !m_cache_over) {		//重复订阅且之前的缓存还未接收完毕
+			{
+				std::unique_lock<std::mutex> lck(m_cache_mtx);
+				m_cache_cancel = true;
+				m_cache_cv.notify_one();		//唤醒且终止自动加载策略的任务
+			}
+			DiagramDataMgr_RemoveAll();
+		}
+		m_cache_cancel = false;
+		write_console(cmd_str.data(), cmd_str.size());
 		break;
 	}
 
 	case Stock_Msg_DiagramCacheData:
 	case Stock_Msg_DiagramCacheTag: {
-		if (!g_conf.conn_real)
-			return;		//如果连接的不是实时行情，那么不需要关心缓存数据
+		if (m_cache_over)
+			return;
 
 		if (data->Length() < DEPTH_MARKET_HEAD_LEN)
 			return;
@@ -269,11 +326,6 @@ void strategy_manager::data_dispatch(E15_ServerCmd *cmd, E15_String *&data) {
 	}
 
 	case Stock_Msg_DiagramGroup: {
-		if (!m_cache_over) {
-			make_index_for_cache();
-			m_cache_over = true;
-		}
-
 		if (data->Length() < DEPTH_MARKET_HEAD_LEN)
 			return;
 
@@ -374,12 +426,16 @@ void strategy_manager::handle_all_sub(std::shared_ptr<processor>& p, const std::
 	int sub_all = 0;
 	ini.SetSection("share");
 	ini.Read("sub_all", sub_all);		//如果已经设置订阅所有行情，则不再订阅指定合约
+	std::vector<std::string> ins_vec;
 	if (sub_all) {
-		for (auto& ins : m_ins_info)
+		for (auto& ins : m_ins_info) {
 			p->register_type(ins.second.type);
+			ins_vec.push_back(ins.first);
+		}
 	} else {
 		const char *ins_id = ini.ReadString("ins_id", "");
-		for (auto& ins : crx::split(ins_id, ";"))
+		ins_vec = crx::split(ins_id, ";");
+		for (auto& ins : ins_vec)
 			p->register_type(m_ins_info[ins].type);
 	}
 }
@@ -409,8 +465,10 @@ void strategy_manager::handle_cus_sub(std::shared_ptr<processor>& p, const std::
 		m_ins_info[ins].subscribe_cnt++;
 		p->register_type(m_ins_info[ins].type);
 	}
+
 	if (sa.Size())
 		m_data_recv->request_subscribe_by_id(sa, start, end, interval);
+
 	p->store_sub_ins(ins_vec);
 }
 
@@ -449,6 +507,12 @@ std::shared_ptr<processor> strategy_manager::create_processor(const std::string&
 }
 
 void strategy_manager::load_strategy(const std::vector<std::string>& args, bool record /*= true*/) {
+	if (args.size() == 2 && args[0] == "__automatic") {
+		bool is_resub = atoi(args[1].c_str());
+		sub_and_load(is_resub);
+		return;
+	}
+
 	if (args.size() != 1)
 		return;
 
@@ -470,6 +534,8 @@ void strategy_manager::load_strategy(const std::vector<std::string>& args, bool 
 		handle_all_sub(p, c);
 	else
 		handle_cus_sub(p, c, false);
+
+	p->init_strategy();
 	m_threads.register_processor(p);
 }
 
@@ -589,11 +655,11 @@ void strategy_manager::test(const std::vector<std::string>& args) {
 int main(int argc, char *argv[]) {
 	g_mgr.add_cmd("load", "l", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.load_strategy(args);
-	}, "load specified library@usage: load(l) `library` `config`");
+	}, "load specified library");
 
 	g_mgr.add_cmd("unload", "ul", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.unload_strategy(args);
-	}, "unload specified library@usage: unload(ul) `strategy` `config`");
+	}, "unload specified library");
 
 	g_mgr.add_cmd("showall", "sa", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.show_all();
