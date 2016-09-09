@@ -5,13 +5,13 @@ static bool g_want_to_stop = false;
 bool processor::load(const char *library, const char *config, uint32_t stg_id, uint16_t src_id) {
 	m_handle = dlopen(library, RTLD_NOW);
 	if (!m_handle) {
-		printf("[strategy manager(child)] Fail to open shared library '%s' with error: %s\n", library, dlerror());
+		print_thread_safe(g_log, "[strategy manager(child)] Fail to open shared library '%s' with error: %s\n", library, dlerror());
 		return false;
 	}
 
 	strategy_export create_strategy = (strategy_export)(dlsym(m_handle, "create_strategy"));
 	if (!create_strategy) {
-		printf("[strategy manager(child)] Load function 'create_strategy' failed with error: %s, please make sure the "
+		print_thread_safe(g_log, "[strategy manager(child)] Load function 'create_strategy' failed with error: %s, please make sure the "
 				"implementation of strategy '%s' comply with the established specifications!\n", dlerror(), library);
 		return false;
 	}
@@ -23,7 +23,7 @@ bool processor::load(const char *library, const char *config, uint32_t stg_id, u
 	impl->m_src_id = src_id;
 	impl->read_config(config);		//读配置
 	impl->on_init();		//初始化
-	printf("[strategy manager] create strategy instance with(run in child %d) library name `%s` with config `%s` succ!\n",
+	print_thread_safe(g_log, "[strategy manager] create strategy instance with(run in child %d) library name `%s` with config `%s` succ!\n",
 			getpid(), library, config);
 	return true;
 }
@@ -36,7 +36,7 @@ void processor::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 }
 
 strategy_manager::strategy_manager(int argc, char *argv[]) {
-	global_log_init();
+	global_log_init(false);
 	m_eth.start();
 	m_thread.start(1);
 
@@ -56,7 +56,7 @@ strategy_manager::strategy_manager(int argc, char *argv[]) {
 
 	m_library = argv[2];		//argv[2] = library, argv[3] = config
 	m_config = argv[3];
-	printf("[strategy_manager (child %d)]成功创建数据处理线程，进入管道(uid=%s)以阻塞方式接收父进程数据...\n",
+	print_thread_safe(g_log, "[strategy_manager (child %d)]成功创建数据处理线程，进入管道(uid=%s)以阻塞方式接收父进程数据...\n",
 			getpid(), argv[1]);
 }
 
@@ -69,7 +69,7 @@ strategy_manager::~strategy_manager() {
 	m_thread.stop();
 	m_eth.stop();
 	global_log_destroy();
-	printf("[strategy_manager (child %d)] 销毁数据处理线程并退出主循环，释放本进程申请的资源，即将退出...\n", getpid());
+	print_thread_safe(g_log, "[strategy_manager (child %d)] 销毁数据处理线程并退出主循环，释放本进程申请的资源，即将退出...\n", getpid());
 }
 
 void strategy_manager::feed_data(int fd, void *arg) {
@@ -98,13 +98,13 @@ void strategy_manager::data_dispatch(int cmd, const char *data, size_t len) {
 	switch (cmd) {
 	case Stock_Msg_InstrumentList: {
 		parse_instrument_list(data, len);
-		printf("[test_child (%d)] get the instrument list with bytes=%ld succ!\n", getpid(), len);
+		print_thread_safe(g_log, "[test_child (%d)] get the instrument list with bytes=%ld succ!\n", getpid(), len);
 		break;
 	}
 
 	case Stock_Msg_DiagramInfo: {
 		parse_diagram_info(data, len);
-		printf("[test_child (%d)] get the diagram info with bytes=%ld succ!\n", getpid(), len);
+		print_thread_safe(g_log, "[test_child (%d)] get the diagram info with bytes=%ld succ!\n", getpid(), len);
 		break;
 	}
 
@@ -123,7 +123,7 @@ void strategy_manager::send_instruction(const std::string& ins_id, order_instruc
 	m_seria.insert("oi", (const char*)&oi, sizeof(order_instruction));
 	m_seria.write(m_write_fifo);
 	m_seria.reset();
-	printf("子进程发送买卖点 ins_id=%s, oi=%p\n", ins_id.c_str(), &oi);
+	print_thread_safe(g_log, "子进程发送买卖点 ins_id=%s, oi=%p\n", ins_id.c_str(), &oi);
 }
 
 int main(int argc, char *argv[]) {

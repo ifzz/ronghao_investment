@@ -46,7 +46,7 @@ main-build: ../../runtime/so/libss_util.so
 ../../runtime/so/libss_util.so: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -rdynamic -L/home/daniel/workspace/ronghao_investment/ver2/runtime/so -shared -o "../../runtime/so/libss_util.so" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -rdynamic -L/home/daniel/workspace/ronghao_investment/ver2/runtime/so -L/home/daniel/workspace/ronghao_investment/runtime/so -shared -o "../../runtime/so/libss_util.so" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build

@@ -5,16 +5,19 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
 ../DiagramDataFactory.cpp \
+../HttpGateway.cpp \
 ../data_mgr.cpp \
 ../ss_util.cpp 
 
 OBJS += \
 ./DiagramDataFactory.o \
+./HttpGateway.o \
 ./data_mgr.o \
 ./ss_util.o 
 
 CPP_DEPS += \
 ./DiagramDataFactory.d \
+./HttpGateway.d \
 ./data_mgr.d \
 ./ss_util.d 
 

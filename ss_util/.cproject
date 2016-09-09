@@ -50,9 +50,12 @@
 								<option defaultValue="true" id="gnu.cpp.link.so.debug.option.shared.978811171" name="Shared (-shared)" superClass="gnu.cpp.link.so.debug.option.shared" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.paths.681549010" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/home/daniel/workspace/ronghao_investment/ver2/runtime/so"/>
+									<listOptionValue builtIn="false" value="/home/daniel/workspace/ronghao_investment/runtime/so"/>
 								</option>
 								<option id="gnu.cpp.link.option.libs.478501957" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="E15_stock_historyD"/>
+									<listOptionValue builtIn="false" value="E15_stock_analyseD"/>
+									<listOptionValue builtIn="false" value="kbase_d"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.2029117909" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

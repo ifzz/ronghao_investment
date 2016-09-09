@@ -92,12 +92,11 @@ public:
 	~DataDescriptionMgr();
 
 	E15_Queue *    m_list;
+	std::map<int, std::string> m_type_dia;
 
 public:
 	void InitDescription(const char *data, size_t len);
 	void InitDescription(E15_ValueTable * vt);
-
-
 };
 
 class DiagramDataHandler ;

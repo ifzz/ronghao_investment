@@ -1,9 +1,6 @@
 #pragma once
 
 #include "data_trans.h"
-#include "store_history.h"
-
-extern void print_thread_safe(const char *format, ...);
 
 class history_mgr;
 class data_parser : public crx::evd_thread_processor {
@@ -49,13 +46,13 @@ struct ins_info {
  * 历史行情服务器从服务器上取出指定合约的指定日期的所有tick级数据，并将这些数据转发给实时行情服务器，
  * 由实时行情根据tick级数据加工出指标数据之后统一将整个group转发给策略服务器
  */
-class history_mgr : public crx::console {
+class history_mgr : public ss_util {
 public:
 	history_mgr() { m_trans = std::make_shared<data_trans>(this); }
 	virtual ~history_mgr() {}
 
 public:
-	virtual bool init(int argc, char *argv[]);
+	virtual bool init(bool is_service, int argc, char *argv[]);
 	virtual void destroy();
 	void send_history(const std::string& ins_id, E15_String *data, int cmd) {
 		m_trans->send_data(ins_id, data, cmd);
@@ -74,7 +71,5 @@ private:
 
 	std::vector<char> m_bitset;
 	std::map<std::string, ins_info> m_ins_info;		//it->first: ins_id, it->second: ins_info
-
 	std::shared_ptr<data_trans> m_trans;
-	E15_HistoryStore *m_history_store;
 };

@@ -2,6 +2,7 @@
 
 #include <list>
 #include <map>
+#include <assert.h>
 #include <string.h>
 #include <string>
 #include <vector>
@@ -21,13 +22,6 @@ struct datetime {		//日期时间，需要将本地时间带给交易服务器
 
 datetime get_current_datetime();
 
-enum ORDER_TYPE {
-	ORDER_UNK = 0,
-	ORDER_LIMIT,			//限价单
-	ORDER_MARKET,		//市价单
-	ORDER_LISTPRICE,	//对价单
-};
-
 enum TRADE_DIRECTION {
 	DIRECTION_UNK = 0,
 	DIRECTION_SELL,
@@ -40,27 +34,18 @@ enum OFFSET_FLAG {
 	FLAG_CLOSE,
 };
 
-struct price_model {
-	ORDER_TYPE type;
-	long long price;
-
-	price_model()
-	:type(ORDER_UNK)
-	,price(0) {}
-};
-
 struct order_instruction {
-	TradeUUID uuid;		//在开仓点由策略服务自动填充，在具体策略中保存此id，在平仓时关联之前的开仓点
+	TradeUUID uuid;			//在开仓点由策略服务自动填充，在具体策略中保存此id，在平仓时关联之前的开仓点
 
-	datetime market;			//行情日期时间
-	TRADE_DIRECTION direction;		//买卖方向
-	OFFSET_FLAG flag;						//开平标志
-	long long price;		//价格
+	datetime market;								//行情日期时间
+	TRADE_DIRECTION direction;			//买卖方向
+	OFFSET_FLAG flag;							//开平标志
+	long long price;								//价格
 
 	unsigned int vol_cnt;				//手数
 	char level;		//强弱信号
 
-	int type_index;				//指标类型，前端画买卖点需要用到的数据
+	char dia_name[16];		//指标名称，前端画买卖点需要用到的数据（不用填）
 	int dia_seq;			//指标流水号
 };
 
@@ -81,16 +66,30 @@ union wd_seq {
 	uint64_t vir_seq;
 };
 
-struct dia_group {
-	MarketAnalyseDataBase *base;
-	MarketAnalyseKline *ext;
-	int mode;		//0删除 1新增 2修改
-	std::vector<MarketAnalyseTagBase*> tags;		//一个data下面有多个tags
-	std::vector<int> tag_mode;		//每个tag对应的操作模式
+struct bin_mem_ptr {
+	char *data;
+	size_t len;
 
-	dia_group()
-	:base(nullptr)
-	,ext(nullptr) {}
+	bin_mem_ptr()
+	:data(nullptr)
+	,len(0) {}
+};
+
+struct dia_item {
+	union {
+		MarketAnalyseDataBase *data_base;
+		MarketAnalyseTagBase *tag_base;
+	};
+	bin_mem_ptr ext;
+	int mode;		//0删除 1新增 2修改
+
+	dia_item()
+	:mode(-1) {}
+};
+
+struct dia_group {
+	dia_item data;		//只可能有一个data
+	std::vector<dia_item> tags;		//一个data下面有可能有多个tag，根据tag_index找到对应tag
 };
 
 struct depth_dia_group {
@@ -108,8 +107,8 @@ public:
 	virtual void execute(depth_dia_group& group) = 0;
 
 	/**
-	 * 如果需要额外的初始化步骤，或者在配置文件中需要加入额外的字段，那么可以重写以下read_config
-	 * 和init这两个接口，执行顺序为read_config->init
+	 * 如果需要额外的初始化步骤，或者在配置文件中需要加入额外的字段，那么可以重写以下read_conf
+	 * 和init这两个接口，执行顺序为read_conf->init
 	 */
 	virtual void read_conf(std::map<std::string, const char*>& conf) {}
 	virtual void init() {}
@@ -120,7 +119,7 @@ public:
 	 * @param：5
 	 * @name：分钟
 	 * @class_name：kline
-	 * @date：指定日期，从date开始加载一直到当前时点
+	 * @date：取值小于0，-1表示从昨天一直加载到今天，依次类推
 	 * @f/args：回调及参数
 	 */
 	void for_each_his_dia(const std::string& id, long param, const std::string& name, const std::string& class_name, int date,
@@ -134,9 +133,10 @@ public:
 	/**
 	 * request_trade各参数的含义:
 	 * ins_id：合约id
+	 * data_index : 图表类型
 	 * oi：交易指令
 	 */
-	void request_trade(const std::string& ins_id, order_instruction& oi);
+	void request_trade(const std::string& ins_id, int data_index, order_instruction& oi);
 
 public:
 	std::string m_strategy_name;				//策略名称

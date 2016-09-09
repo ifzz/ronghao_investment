@@ -1,6 +1,5 @@
 #include "strategy_manager.h"
 
-E15_Socket g_socket;
 static strategy_manager g_mgr;
 
 processor::processor(strategy_manager *mgr_ptr)
@@ -20,19 +19,27 @@ void processor::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 		//有可能需要cache中的最后一根K线继续初始化
 		if (impl->cache.end() != impl->cache.find(id)) {
 			//策略中可能会加载多种类型K线的历史
+			bool exec = true;
 			auto& cache = impl->cache[id];
 			for (auto it = cache.cache_dia.begin(); it != cache.cache_dia.end(); ) {
-				auto& real_dia = real_group.dias[it->first].back();		//取最新的比较
-				if (real_dia.base->_date == it->second.base->_date &&
-						real_dia.base->_seq == it->second.base->_seq)
-					it = cache.cache_dia.erase(it);
-				else
-					++it;
+				if (real_group.dias.end() != real_group.dias.find(it->first)) {
+					auto& real_dia = real_group.dias[it->first].back();		//取最新的比较
+					if (-1 == it->second.data.mode || (real_dia.data.data_base->_date == it->second.data.data_base->_date &&
+							real_dia.data.data_base->_seq == it->second.data.data_base->_seq))
+						it = cache.cache_dia.erase(it);
+					else
+						++it;
+				} else {
+					exec = false;
+					break;
+				}
 			}
 
-			for (auto& dia : cache.cache_dia)
-				cache.f(dia.second, cache.args);
-			impl->cache.erase(id);
+			if (exec) {
+				for (auto& dia : cache.cache_dia)
+					cache.f(dia.second, cache.args);
+				impl->cache.erase(id);
+			}
 		}
 
 		m_strategy->execute(real_group);
@@ -160,25 +167,27 @@ void sig_child(int sig_no) {
 	}
 }
 
-bool strategy_manager::init(int argc, char *argv[]) {
+bool strategy_manager::init(bool is_service, int argc, char *argv[]) {
 	signal(SIGCHLD, [](int sig_no)->void {
 		sig_child(sig_no);
 	});
 
-	parse_ini();
+	parse_ini(is_service);
 	if (!g_conf.for_produce && access(FIFO_PREFIX, F_OK))
 		mkdir(FIFO_PREFIX, 0755);
 
 	m_xml.load("ini/autoload.xml", "config");
-	global_log_init();
+	global_log_init(true);
 	g_log.Init("strategy_manager", 100);
-	g_socket.Start();
 
 	m_threads.start(g_conf.threads_num);
 	if (!g_conf.for_produce)		//在测试环境中需要接收子进程发送的交易数据，单独开辟一个线程接收
 		m_trade_th.start();
 	m_data_recv->connect_data_server();
+	m_http_gw.Start(&g_socket, g_conf.so_addr.c_str(), g_conf.so_port);
 	m_statis_th = std::thread(statis_thread, &m_statis_stop);
+	m_so_svr_prefix = "http://"+g_conf.so_addr+"/strategy/";
+	m_working_path = crx::get_current_working_path();
 	return true;
 }
 
@@ -198,13 +207,14 @@ void strategy_manager::destroy() {
 
 	m_statis_stop = true;
 	m_statis_th.join();
+	m_http_gw.Stop();
 	m_data_recv->terminate_connect();
 	if (!g_conf.for_produce)		//回收接收交易数据的线
 		m_trade_th.stop();
+	print_thread_safe(g_log, "[strategy_manager::destroy]已卸载所有正在执行的策略，并退订所有合约！\n");
 	m_threads.stop();
 	print_thread_safe(g_log, "[strategy_manager::destroy]中断与行情服务器的连接，释放服务申请的资源\n");
 
-	g_socket.Stop();
 	global_log_destroy();
 	remove(FIFO_PREFIX);
 }
@@ -241,6 +251,9 @@ void strategy_manager::sub_and_load(bool is_resub) {
 		for (auto& ins : m_ins_info)
 			sa.Add(ins.first.data(), ins.first.size());
 		m_data_recv->request_subscribe_by_id(sa, 0, 0, 0);
+
+		if (m_cache_over)		//如果已接收过缓存，那么重复发送的缓存将被过滤，因此这里不需要等待
+			return;
 
 		{
 			std::unique_lock<std::mutex> lck(m_cache_mtx);
@@ -315,7 +328,7 @@ void strategy_manager::data_dispatch(E15_ServerCmd *cmd, E15_String *&data) {
 
 	case Stock_Msg_DiagramCacheData:
 	case Stock_Msg_DiagramCacheTag: {
-		if (m_cache_over)
+		if (m_cache_over || !g_conf.for_produce)
 			return;
 
 		if (data->Length() < DEPTH_MARKET_HEAD_LEN)
@@ -652,7 +665,97 @@ void strategy_manager::test(const std::vector<std::string>& args) {
 	m_test_exist_data = false;
 }
 
+void strategy_manager::request_strategy(const std::vector<std::string>& args) {
+	if (args.empty())
+		return;
+
+	for (auto& stg_id : args) {
+		std::string so_file = stg_id+".so", ini_file = stg_id+".ini";
+		std::string stg_ins_dir = g_conf.stg_dir+"/"+stg_id+"/";
+		if (access(stg_ins_dir.c_str(), F_OK))		//目录不存在则创建
+			mkdir(stg_ins_dir.c_str(), 0755);
+
+		//so key
+		std::string so_store_file = "../../"+g_conf.so_local_dir+so_file;
+		std::string so_sym_file = so_file;
+		std::string so_key = "so "+stg_id+" "+so_store_file+" "+so_sym_file+" "+stg_ins_dir+" "+m_working_path;
+
+		//ini key
+		std::string ini_store_file = stg_ins_dir+ini_file;
+		std::string ini_key = "ini "+stg_id+" "+ini_store_file;
+
+		url_key key;
+		key.so_key = so_key;
+		key.ini_key = ini_key;
+		m_id_key[stg_id] = key;
+
+		std::string so_url = m_so_svr_prefix+stg_id+"/"+so_file;
+		std::string ini_url = m_so_svr_prefix+stg_id+"/"+ini_file;
+		m_http_gw.Get(m_id_key[stg_id].so_key.c_str(), so_url.c_str(), nullptr, OnResponed);
+		m_http_gw.Get(m_id_key[stg_id].ini_key.c_str(), ini_url.c_str(), nullptr, OnResponed);
+		print_thread_safe(g_log, "请求文件 id=%s so_url=%s, ini_url=%s\n", stg_id.c_str(), so_url.c_str(), ini_url.c_str());
+	}
+}
+
+void strategy_manager::OnResponed(const char * key,int status,E15_ValueTable *& header,E15_String *& data) {
+	if (200 != status) {
+		print_thread_safe(g_log, "文件请求失败 key=%s, status=%d\n", key, status);
+		return;
+	}
+
+	auto key_vec = crx::split(key, " ");
+	if (key_vec[0] == "so") {		//so文件
+		auto& stg_id = key_vec[1];
+		auto& so_store_file = key_vec[2];
+		auto& so_sym_file = key_vec[3];
+
+		chdir(key_vec[4].c_str());
+		FILE *fp = fopen(so_store_file.c_str(), "w");
+		fwrite(data->c_str(), 1, data->Length(), fp);
+		fclose(fp);
+
+		if (!crx::symlink_exist(so_sym_file.c_str()) && -1 == symlink(so_store_file.c_str(), so_sym_file.c_str()))
+			perror("OnResponed get so file");
+
+		print_thread_safe(g_log, "[OnResponed]取到so文件，存储路径：%s，链接路径：%s\n",
+				so_store_file.c_str(), so_sym_file.c_str());
+		chdir(key_vec[5].c_str());
+		g_mgr.set_soini_flag(stg_id, key_vec[0]);
+	}
+
+	if (key_vec[0] == "ini") {		//ini文件
+		auto& stg_id = key_vec[1];
+		auto& ini_store_file = key_vec[2];
+
+		FILE *fp = fopen(ini_store_file.c_str(), "w");
+		fwrite(data->c_str(), 1, data->Length(), fp);
+		fclose(fp);
+		print_thread_safe(g_log, "[OnResponed]取到ini文件，存储路径：%s\n", ini_store_file.c_str());
+		g_mgr.set_soini_flag(stg_id, key_vec[0]);
+	}
+}
+
+void strategy_manager::set_soini_flag(const std::string& stg_id, const std::string& file_type) {
+	if ("so" == file_type)
+		m_id_key[stg_id].bit_flag |= 0x1;
+
+	if ("ini" == file_type)
+		m_id_key[stg_id].bit_flag |= 0x2;
+
+	if (m_id_key[stg_id].bit_flag != 3)
+		return;
+
+	print_thread_safe(g_log, "已同时获取到so和ini，strategy_id=%s\n", stg_id.c_str());
+	m_id_key.erase(stg_id);
+	std::vector<std::string> args = {stg_id};
+//	load_strategy(args);
+}
+
 int main(int argc, char *argv[]) {
+	g_mgr.add_cmd("reqstg", "rs", [&](const std::vector<std::string>& args, crx::console *c)->void {
+		g_mgr.request_strategy(args);
+	}, "request strategy(so&ini) from remote server");
+
 	g_mgr.add_cmd("load", "l", [&](const std::vector<std::string>& args, crx::console *c)->void {
 		g_mgr.load_strategy(args);
 	}, "load specified library");

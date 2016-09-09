@@ -1,27 +1,5 @@
 #include "history_mgr.h"
 
-static E15_Log g_log;		//历史行情共用同一个日志
-static std::mutex g_mtx_for_screen;
-static std::mutex g_mtx_for_log;
-
-void print_thread_safe(const char *format, ...) {
-	va_list args;
-	va_start(args, format);
-	{
-		std::unique_lock<std::mutex> lck(g_mtx_for_log);
-		g_log.PrintfV(0, format, args);
-	}
-	va_end(args);
-	if (true) {
-		va_start(args, format);
-		{
-			std::unique_lock<std::mutex> lck(g_mtx_for_screen);
-			vprintf(format, args);
-		}
-		va_end(args);
-	}
-}
-
 data_parser::data_parser(const std::string& ins_id, unsigned int start, unsigned int end, history_mgr *ptr)
 :crx::evd_thread_processor()
 ,m_ins_id(ins_id)
@@ -39,19 +17,17 @@ void data_parser::process_task(std::shared_ptr<crx::evd_thread_job> job) {
 //	print_thread_safe("[time=%s.%ld]发送一次tick数据\n", time_buffer, tv.tv_usec/1000);
 
 	//只需要转发tick级行情给实时行情服务器就可以了
-	if (m_depth_list.empty()) {
+	while (m_depth_list.empty()) {
 		if (m_current_date > m_end) {
 			m_mgr_ptr->notify_over(m_ins_id);
 			return;
 		}
 
 		m_mgr_ptr->load_depth(m_ins_id.c_str(), this, m_current_date);
-		if (m_depth_list.empty()) {
-			print_thread_safe("不存在指定日期（%d）的tick级数据！\n", m_current_date);
-			m_mgr_ptr->notify_over(m_ins_id);
-			return;
-		}
-		print_thread_safe("当前合约（id=%s）指定日期%d的所有tick级行情加载完成！\n", m_ins_id.c_str(), m_current_date);
+		if (m_depth_list.empty())
+			print_thread_safe(g_log, "不存在指定日期（%d）的tick级数据！\n", m_current_date);
+		else
+			print_thread_safe(g_log, "当前合约（id=%s）指定日期%d的所有tick级行情加载完成！\n", m_ins_id.c_str(), m_current_date);
 		m_current_date++;
 	}
 
@@ -79,25 +55,24 @@ int data_parser::get_depth(void * obj,int market,const char * id,
 	return 1;
 }
 
-bool history_mgr::init(int argc, char *argv[]) {
+bool history_mgr::init(bool is_service, int argc, char *argv[]) {
 	//全局日志初始化
 	g_log.Init("history_md", 100);
-	print_thread_safe("Complete the initialization of the global log object……\n");
+	global_log_init(true);
+	print_thread_safe(g_log, "Complete the initialization of the global log object……\n");
 
 	m_timer_th.start();
 	m_thread_pool.start(10);
 	m_trans->start();
-	m_history_store = Create_E15_HistoryStore();
-	m_history_store->Init();
 	return true;
 }
 
 void history_mgr::destroy() {
-	delete m_history_store;
 	m_trans->stop();
 	m_thread_pool.stop();
 	m_timer_th.stop();
-	print_thread_safe("history manager resource released!\n");
+	print_thread_safe(g_log, "history manager resource released!\n");
+	global_log_destroy();
 }
 
 void history_mgr::timer_callback(int fd, void *args) {
@@ -119,7 +94,7 @@ void history_mgr::notify_over(const std::string& ins_id) {
 	m_timer_th.remove_epoll_event(m_ins_info[ins_id].fd);
 	m_thread_pool.unregister_processor(m_ins_info[ins_id].ta->parser);
 	m_ins_info.erase(ins_id);
-	print_thread_safe("订阅合约ins_id=%s的指定历史行情发送完毕，任务已撤销\n", ins_id.c_str());
+	print_thread_safe(g_log, "订阅合约ins_id=%s的指定历史行情发送完毕，任务已撤销\n", ins_id.c_str());
 }
 
 void history_mgr::history_subscribe(const char *id, unsigned int start, unsigned int end, unsigned int millisec) {
@@ -144,7 +119,7 @@ void history_mgr::history_subscribe(const char *id, unsigned int start, unsigned
 	ta->parser->register_type(job_type);
 	m_thread_pool.register_processor(ta->parser);
 	m_ins_info[id].ta = ta;
-	print_thread_safe("\n订阅合约 id=%s，关注时间从 start=%d 到 end=%d，加入定时器事件，定时间隔为%dms\n",
+	print_thread_safe(g_log, "\n订阅合约 id=%s，关注时间从 start=%d 到 end=%d，加入定时器事件，定时间隔为%dms\n",
 			id, start, end, millisec);
 
 	m_ins_info[id].fd = crx::create_timerfd(100, millisec);
@@ -166,7 +141,7 @@ void history_mgr::history_unsubscribe(const char *id) {
 	close(m_ins_info[id].fd);
 	m_thread_pool.unregister_processor(m_ins_info[id].ta->parser);
 	m_ins_info.erase(id);
-	print_thread_safe("退订合约 id=%s 成功！\n", id);
+	print_thread_safe(g_log, "退订合约 id=%s 成功！\n", id);
 }
 
 int main(int argc, char *argv[]) {

@@ -57,6 +57,8 @@ enum Trade_Msg
 	Trade_Msg_StrategeForceClose,	//程序化强制平仓，用于风控
 	Trade_Msg_StrategeTradeResult,//交易状态报告(status = 0，交易完结)
 
+	Trade_Msg_ReqHisOrderIns,		//请求历史买卖点
+
 	Trade_Msg_Max
 };
 

@@ -9,7 +9,7 @@ data_trans::data_trans(history_mgr *mgr_ptr)
 	m_ins_vec = {"ni1609", "cu1701"};
 }
 
-int data_trans::start() {
+void data_trans::start() {
 	g_socket.Start();
 	Start(&g_socket, "ini/server.ini");
 
@@ -18,7 +18,6 @@ int data_trans::start() {
 	ini.SetSection("role");
 	m_stg_role = ini.ReadString("stg", "");
 	m_dia_role = ini.ReadString("dia", "");
-	return 1;
 }
 
 void data_trans::stop() {
@@ -35,27 +34,34 @@ void data_trans::send_data(const std::string& ins_id, E15_String *data, int cmd)
 }
 
 int data_trans::OnOpen(E15_ServerInfo * info,E15_String *& json) {
-	print_thread_safe("[%x:%x] (N=%d,name=%s:role=%s) 上线\n", info->id.h,
+	print_thread_safe(g_log, "[%x:%x] (N=%d,name=%s:role=%s) 上线\n", info->id.h,
 			info->id.l, info->N, info->name, info->role);
 
 	if (!strcmp(info->role, m_stg_role.c_str())) {
 		m_stg_id = info->id;
-		print_thread_safe("[history_md]连接到策略服务器(%x:%x, name=%s, role=%s)\n", info->id.h,
+		print_thread_safe(g_log, "[history_md]连接到策略服务器(%x:%x, name=%s, role=%s)\n", info->id.h,
 				info->id.l, info->name, info->role);
 	}
 
 	if (!strcmp(info->role, m_dia_role.c_str())) {
 		m_dia_id = info->id;
 		send_ins_info(m_ins_vec, m_dia_id);
-		print_thread_safe("[history_md]连接到指标生成服务器(%x:%x, name=%s, role=%s)\n", info->id.h,
+		print_thread_safe(g_log, "[history_md]连接到指标生成服务器(%x:%x, name=%s, role=%s)\n", info->id.h,
 				info->id.l, info->name, info->role);
 	}
 	return 1;
 }
 
 int data_trans::OnClose(E15_ServerInfo * info) {
-	print_thread_safe("[%x:%x] (N=%d, name=%s:role=%s) 下线\n", info->id.h, info->id.l,
+	print_thread_safe(g_log, "[%x:%x] (N=%d, name=%s:role=%s) 下线\n", info->id.h, info->id.l,
 			info->N, info->name, info->role);
+
+	if (!strcmp(info->role, m_stg_role.c_str())) {
+		//策略服务器下线，将该节点订阅的所有历史tick全部退订
+		for (auto& ins : m_node_sub[info->name])
+			m_mgr_ptr->history_unsubscribe(ins.c_str());
+		m_node_sub.erase(info->name);
+	}
 	return 1000;		//自动重联
 }
 
@@ -77,7 +83,7 @@ int data_trans::handle_subscribe(int cmd, E15_String *&data, const std::string& 
 	vt.Import(data->c_str(), data->Length());
 	E15_Value *v = vt.ValueS("id_list");
 	if (!v) {
-		print_thread_safe("[data_trans]handle subscribe by id error, not find id_list, req data len=%d\n", data->Length());
+		print_thread_safe(g_log, "[data_trans]handle subscribe by id error, not find id_list, req data len=%d\n", data->Length());
 		return -1;
 	}
 	E15_StringArray *sa = v->GetStringArray();

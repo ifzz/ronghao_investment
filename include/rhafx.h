@@ -23,6 +23,8 @@
 
 #include "ss_util/data_mgr.h"
 #include "ss_util/ss_util.h"
+#include "ss_util/HttpGateway.h"
+#include "ss_util/HttpGateway_helper.h"
 
 struct stg_config {
 	std::string ip;
@@ -35,6 +37,7 @@ struct stg_config {
 	int for_produce;
 
 	int threads_num;
+	int print_screen;
 	std::string stg_dir;
 	std::string db_import;
 
@@ -45,9 +48,13 @@ struct stg_config {
 
 	std::string so_addr;			//so文件服务器地址
 	int so_port;						//端口
+	std::string so_local_dir;		//so本地存储目录
 };
 
 #define DEPTH_MARKET_HEAD_LEN 16
 #define FIFO_PREFIX	"./runtime_fifo/"
 
 using strategy_export = std::shared_ptr<strategy_base> (*)();
+
+extern E15_Log g_log;
+extern void print_thread_safe(E15_Log& log, const char *format, ...);

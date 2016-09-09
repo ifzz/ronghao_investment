@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lE15_stock_historyD
+LIBS := -lE15_stock_historyD -lE15_stock_analyseD -lkbase_d
 

@@ -9,6 +9,8 @@ ver2/.svn
 runtime/strategy_server/log_files/
 runtime/history_md_server/log_files/
 runtime/strategy_proxy/log_files/
+runtime/trade_access/log_files/
+runtime/trade_access/trade.db
 ver2/runtime/stock/radar/log_files
 ver2/runtime/stock/DiagramServer/log_files
 ver2/runtime/stock/ClientMgr/log_files
@@ -20,22 +22,26 @@ runtime/strategy_server/database_import/
 ss_util/Debug/DiagramDataFactory.d
 ss_util/Debug/data_mgr.d
 ss_util/Debug/ss_util.d
+ss_util/Debug/HttpGateway.d
 strategy_server/Debug/data_manager.d
 strategy_server/Debug/strategy_manager.d
 strategy_proxy/Debug/strategy_proxy.d
 test_child/Debug/test_child.d
 history_md_server/Debug/history_mgr.d
 history_md_server/Debug/data_trans.d
+trade_access/Debug/trade_access.d
 
 ss_util/Debug/data_mgr.o
 ss_util/Debug/DiagramDataFactory.o
 ss_util/Debug/ss_util.o
+ss_util/Debug/HttpGateway.o
 strategy_server/Debug/strategy_manager.o
 strategy_server/Debug/data_manager.o
 strategy_proxy/Debug/strategy_proxy.o
 test_child/Debug/test_child.o
 history_md_server/Debug/history_mgr.o
 history_md_server/Debug/data_trans.o
+trade_access/Debug/trade_access.o
 
 strategy_library/sideways_false_breakthrough/Debug/sideways_false_breakthrough.d
 strategy_library/strategy_demo1/Debug/strategy_demo1.d

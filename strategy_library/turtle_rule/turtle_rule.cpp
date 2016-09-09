@@ -1,6 +1,5 @@
 #include "turtle_rule.h"
 #include <algorithm>
-#include <assert.h>
 
 std::shared_ptr<strategy_base> create_strategy() {
 	return std::make_shared<turtle_rule>();
@@ -28,8 +27,8 @@ void turtle_rule::init() {
 void turtle_rule::exec_trade(const std::string& id, MarketDepthData *depth, dia_group& dia,
 		OFFSET_FLAG flag, TRADE_DIRECTION dir) {
 	datetime  mdt;
-	mdt.date = depth->base.nActionDay;
-	mdt.time = depth->base.nTime;
+	mdt.date = dia.data.data_base->_date;
+	mdt.time = dia.data.data_base->_time;
 
 	order_instruction oi;
 	if (FLAG_CLOSE == flag)
@@ -42,22 +41,21 @@ void turtle_rule::exec_trade(const std::string& id, MarketDepthData *depth, dia_
 	oi.vol_cnt = 1;
 	oi.level = 1;
 
-	oi.dia_seq = dia.base->_seq;
-	oi.type_index = m_15minkline;
-	request_trade(id, oi);
+	oi.dia_seq = dia.data.data_base->_seq;
+	request_trade(id, m_15minkline, oi);
 	if (FLAG_OPEN == flag)
 		m_ins_data[id].uuid = oi.uuid;
 }
 
 void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data, bool is_his) {
-	if (dia.base->_state != 2)
+	if (dia.data.data_base->_state != 2)
 		return;
 
-	if (dia.mode == -1)
+	if (dia.data.mode == -1)
 		return;
 
-	MarketAnalyseTagBase *kavg50 = dia.tags[m_50kavg];
-	MarketAnalyseTagBase *kavg250 = dia.tags[m_250kavg];
+	MarketAnalyseTagBase *kavg50 = dia.tags[m_50kavg].tag_base;
+	MarketAnalyseTagBase *kavg250 = dia.tags[m_250kavg].tag_base;
 	if (!kavg50 || !kavg250)
 		return;		//需要50均线和250均线
 
@@ -67,8 +65,8 @@ void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data, bool is_his) 
 	}
 
 	wd_seq uni_seq;
-	uni_seq.date = dia.base->_date;
-	uni_seq.seq = dia.base->_seq;
+	uni_seq.date = dia.data.data_base->_date;
+	uni_seq.seq = dia.data.data_base->_seq;
 	if (uni_seq.vir_seq <= data.last_klseq.vir_seq)		//如果是旧的K线，则尝试更新以前的值
 		return;
 
@@ -76,13 +74,16 @@ void turtle_rule::con_open_20kline(dia_group& dia, ins_data& data, bool is_his) 
 		data.kline20.pop_front();
 
 	//新的K线
-	data.kline20.push_back({dia.base->_date, dia.base->_seq, kavg50->_value, kavg250->_value,
-		dia.ext->max_item.price, dia.ext->min_item.price});
-	data.pdc = dia.ext->close_item.price;
-	data.last_klseq.date = dia.base->_date;
-	data.last_klseq.seq = dia.base->_seq;
+	assert(dia.data.ext.len == sizeof(MarketAnalyseKline));
+	MarketAnalyseKline *ext = (MarketAnalyseKline*)dia.data.ext.data;
+
+	data.kline20.push_back({dia.data.data_base->_date, dia.data.data_base->_seq, kavg50->_value, kavg250->_value,
+		ext->max_item.price, ext->min_item.price});
+	data.pdc = ext->close_item.price;
+	data.last_klseq.date = dia.data.data_base->_date;
+	data.last_klseq.seq = dia.data.data_base->_seq;
 	print_thread_safe("[con_open_20kline]得到一根已完成的K线！date=%d seq=%d 最高价=%d 最低价=%d\n",
-			dia.base->_date, dia.base->_seq, dia.ext->max_item.price, dia.ext->min_item.price);
+			dia.data.data_base->_date, dia.data.data_base->_seq, ext->max_item.price, ext->min_item.price);
 	if (20 == data.kline20.size() && !is_his)
 		check_kavg_loca(data);
 }
@@ -133,8 +134,8 @@ void turtle_rule::check_kavg_loca(ins_data& data) {
 
 void turtle_rule::try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data) {
 	wd_seq uni_seq;
-	uni_seq.date = dia.base->_date;
-	uni_seq.seq = dia.base->_seq;
+	uni_seq.date = dia.data.data_base->_date;
+	uni_seq.seq = dia.data.data_base->_seq;
 	if (uni_seq.vir_seq <= data.last_klseq.vir_seq)
 		return;		//来的是一个旧的K线，突破时用的是最新价
 
@@ -143,7 +144,7 @@ void turtle_rule::try_open_position(const std::string& id, MarketDepthData *dept
 			data.sts = STS_OPEN_BUY;
 			exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_BUY);
 			print_thread_safe("[try_open_position]最新价突破20根K线的最高点，且50均线在250均线之上，开多仓！date=%d "
-					"seq=%d 最新价（开仓点价格）=%d 最高点=%d\n", dia.base->_date, dia.base->_seq,
+					"seq=%d 最新价（开仓点价格）=%d 最高点=%d\n", dia.data.data_base->_date, dia.data.data_base->_seq,
 					depth->base.nPrice, data.kline20_high);
 		}
 	} else {		//-1 == data.kavg_loca		尝试做空
@@ -151,23 +152,26 @@ void turtle_rule::try_open_position(const std::string& id, MarketDepthData *dept
 			data.sts = STS_OPEN_SELL;
 			exec_trade(id, depth, dia, FLAG_OPEN, DIRECTION_SELL);
 			print_thread_safe("[try_open_position]最新价突破20根K线的最低点，且50均线在250均线之下，开空仓！date=%d "
-					"seq=%d 最新价（开仓点价格）=%d 最高点=%d\n", dia.base->_date, dia.base->_seq,
+					"seq=%d 最新价（开仓点价格）=%d 最高点=%d\n", dia.data.data_base->_date, dia.data.data_base->_seq,
 					depth->base.nPrice, data.kline20_low);
 		}
 	}
 
 	if (data.sts == STS_OPEN_BUY || data.sts == STS_OPEN_SELL) {
+		assert(dia.data.ext.len == sizeof(MarketAnalyseKline));
+		MarketAnalyseKline *ext = (MarketAnalyseKline*)dia.data.ext.data;
+
 		//已经开仓
 		data.open_price = depth->base.nPrice;		//开仓点的价格
-		if (dia.base->_state == 2) {		//如果在完整状态的K线处开仓，那么记录pdc
-			data.pdc = dia.ext->close_item.price;
-			data.last_klseq.date = dia.base->_date;
-			data.last_klseq.seq = dia.base->_seq;
+		if (dia.data.data_base->_state == 2) {		//如果在完整状态的K线处开仓，那么记录pdc
+			data.pdc = ext->close_item.price;
+			data.last_klseq.date = dia.data.data_base->_date;
+			data.last_klseq.seq = dia.data.data_base->_seq;
 		}
 		return;
 	}
 
-	if (dia.base->_state == 2) {
+	if (dia.data.data_base->_state == 2) {
 		//在尝试开仓时遇到一根已完成的K线，重新构造新的20根K线
 		print_thread_safe("[try_open_position]在尝试开仓过程中取到一根已完成的K线，打破之前形态，重新构造！\n");
 		data.sts = STS_INIT;
@@ -176,17 +180,20 @@ void turtle_rule::try_open_position(const std::string& id, MarketDepthData *dept
 }
 
 void turtle_rule::con_close_10kline(dia_group& dia, ins_data& data) {
-	if (dia.base->_state != 2)
+	if (dia.data.data_base->_state != 2)
 		return;		//平仓时构造的10根K线都是已完成的
 
 	if (data.kline10.size() == 10)
 		data.kline10.pop_front();
 
+	assert(dia.data.ext.len == sizeof(MarketAnalyseKline));
+	MarketAnalyseKline *ext = (MarketAnalyseKline*)dia.data.ext.data;
+
 	data.kline10.push_back({0, 0, 0, 0});		//只需要这10根K线的最高价和最低价
-	data.kline10.back().high_price = dia.ext->max_item.price;
-	data.kline10.back().low_price = dia.ext->min_item.price;
+	data.kline10.back().high_price = ext->max_item.price;
+	data.kline10.back().low_price = ext->min_item.price;
 	print_thread_safe("[con_close_10kline]在平仓过程中构造10根K线，当前取到一根已完成的K线 date=%d seq=%d "
-			"最高价=%d 最低价=%d\n", dia.base->_date, dia.base->_seq, dia.ext->max_item.price, dia.ext->min_item.price);
+			"最高价=%d 最低价=%d\n", dia.data.data_base->_date, dia.data.data_base->_seq, ext->max_item.price, ext->min_item.price);
 
 	if (data.kline10.size() == 10) {
 		//10根K线的最高价
@@ -202,12 +209,15 @@ void turtle_rule::con_close_10kline(dia_group& dia, ins_data& data) {
 
 void turtle_rule::try_close_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data) {
 	wd_seq uni_seq;
-	uni_seq.date = dia.base->_date;
-	uni_seq.seq = dia.base->_seq;
+	uni_seq.date = dia.data.data_base->_date;
+	uni_seq.seq = dia.data.data_base->_seq;
 	if (uni_seq.vir_seq <= data.last_klseq.vir_seq)
 		return;
 
-	__int64 h = dia.ext->max_item.price, l = dia.ext->min_item.price;
+	assert(dia.data.ext.len == sizeof(MarketAnalyseKline));
+	MarketAnalyseKline *ext = (MarketAnalyseKline*)dia.data.ext.data;
+
+	__int64 h = ext->max_item.price, l = ext->min_item.price;
 	__int64 TR = std::max(std::max(h-l, h-data.pdc), data.pdc-l);		//TR（实际范围）=max(H-L, H-PDC, PDC-L)
 
 	__int64 N = TR;
@@ -221,7 +231,7 @@ void turtle_rule::try_close_position(const std::string& id, MarketDepthData *dep
 		if (depth->base.nPrice < data.open_price-2*N) {		//最新价突破开仓点价格-2N，止损
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
 			print_thread_safe("[try_close_position 平多仓]最新价突破开仓点价格-2N，止损！date=%d seq=%d, 最新价=%d "
-					"开仓点价格=%d", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.open_price);
+					"开仓点价格=%d", dia.data.data_base->_date, dia.data.data_base->_seq, depth->base.nPrice, data.open_price);
 			close = true;
 		}
 
@@ -229,16 +239,16 @@ void turtle_rule::try_close_position(const std::string& id, MarketDepthData *dep
 			//或者价格突破近10根K线最低点时退出，止盈或止损
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_SELL);
 			print_thread_safe("[try_close_position 平多仓]最新价突破近10根K线最低点，退出！date=%d seq=%d 最新价=%d "
-					"近10根K线最低点=%d", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.kline10_low);
+					"近10根K线最低点=%d", dia.data.data_base->_date, dia.data.data_base->_seq, depth->base.nPrice, data.kline10_low);
 			close = true;
 		}
-		if (dia.base->_state == 2)		//只需要已完成的10根K线
+		if (dia.data.data_base->_state == 2)		//只需要已完成的10根K线
 			con_close_10kline(dia, data);
 	} else {		//-1 == data.kavg_loca		//平空仓
 		if (depth->base.nPrice > data.open_price+2*N) {		//最新价突破开仓点价格+2N，止损
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_BUY);
 			print_thread_safe("[try_close_position 平空仓]最新价突破开仓点价格+2N，止损！date=%d seq=%d, 最新价=%d "
-					"开仓点价格=%d", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.open_price);
+					"开仓点价格=%d", dia.data.data_base->_date, dia.data.data_base->_seq, depth->base.nPrice, data.open_price);
 			close = true;
 		}
 
@@ -246,10 +256,10 @@ void turtle_rule::try_close_position(const std::string& id, MarketDepthData *dep
 			//或者价格突破近10根K线的最高点时退出，止盈或止损
 			exec_trade(id, depth, dia, FLAG_CLOSE, DIRECTION_BUY);
 			print_thread_safe("[try_close_position 平空仓]最新价突破近10根K线最高点，退出！date=%d seq=%d 最新价=%d "
-					"近10根K线最高点=%d", dia.base->_date, dia.base->_seq, depth->base.nPrice, data.kline10_high);
+					"近10根K线最高点=%d", dia.data.data_base->_date, dia.data.data_base->_seq, depth->base.nPrice, data.kline10_high);
 			close = true;
 		}
-		if (dia.base->_state == 2)
+		if (dia.data.data_base->_state == 2)
 			con_close_10kline(dia, data);
 	}
 
@@ -262,14 +272,14 @@ void turtle_rule::try_close_position(const std::string& id, MarketDepthData *dep
 		return;
 	}
 
-	if (dia.base->_state == 2) {
+	if (dia.data.data_base->_state == 2) {
 		//当前K线已完成，记录PDN——前一根K线完成时的N值
 		data.pdn = N;
-		data.pdc = dia.ext->close_item.price;
-		data.last_klseq.date = dia.base->_date;
-		data.last_klseq.seq = dia.base->_seq;
+		data.pdc = ext->close_item.price;
+		data.last_klseq.date = dia.data.data_base->_date;
+		data.last_klseq.seq = dia.data.data_base->_seq;
 		print_thread_safe("[try_close_position]平仓过程中取到一根已完成的K线，记录pdn=%d, date=%d, seq=%d\n",
-				data.pdn, dia.base->_date, dia.base->_seq);
+				data.pdn, dia.data.data_base->_date, dia.data.data_base->_seq);
 	}
 }
 

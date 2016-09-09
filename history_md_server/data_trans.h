@@ -9,7 +9,7 @@ public:
 	virtual ~data_trans() {}
 
 public:
-	int start();
+	void start();
 	void stop();
 	void send_data(const std::string& ins_id, E15_String *data, int cmd);
 

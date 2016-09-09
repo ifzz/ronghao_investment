@@ -2,11 +2,6 @@
 
 #include "data_manager.h"
 
-extern E15_Log g_log;
-extern E15_Socket g_socket;
-
-void print_thread_safe(E15_Log& log, const char *format, ...);
-
 class strategy_job : public crx::evd_thread_job {
 public:
 	strategy_job(int64_t type) : crx::evd_thread_job(type), raw(nullptr) {}
@@ -76,6 +71,15 @@ struct library_info {
 	:handle(nullptr) {}
 };
 
+struct url_key {
+	std::string so_key;
+	std::string ini_key;
+	char bit_flag;
+
+	url_key()
+	:bit_flag(0) {}
+};
+
 class strategy_manager : public ss_util {
 public:
 	strategy_manager()
@@ -85,11 +89,13 @@ public:
 	,m_statis_stop(false) {
 		m_data_recv = new data_manager(this);
 	}
-	virtual ~strategy_manager() { delete m_data_recv; }
+	virtual ~strategy_manager() {
+		delete m_data_recv;
+	}
 	bool m_test_exist_data;
 
 public:
-	virtual bool init(int argc, char *argv[]);
+	virtual bool init(bool is_service, int argc, char *argv[]);
 	virtual void destroy();
 	virtual unsigned int get_usable_stg_id();
 	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) {
@@ -98,6 +104,7 @@ public:
 
 	void sub_and_load(bool is_resub);
 	void notify_cache_over();
+	void request_strategy(const std::vector<std::string>& args);
 	void load_strategy(const std::vector<std::string>& args, bool record = true);
 	void unload_strategy(const std::vector<std::string>& args, bool record = true);
 	void data_dispatch(E15_ServerCmd *cmd, E15_String *&data);
@@ -109,6 +116,7 @@ public:
 	void test(const std::vector<std::string>& args);
 	void register_rfifo(int fd);
 	void unregister_rfifo(int fd);
+	void set_soini_flag(const std::string& stg_id, const std::string& file_type);
 
 private:
 	void auto_load_stg();
@@ -124,9 +132,14 @@ private:
 
 	static void for_trade(int fd, void *args);
 	static void statis_thread(bool *want_to_stop);
+	static void OnResponed(const char * key,int status,E15_ValueTable *& header,E15_String *& data);
 
 private:
 	std::vector<uint8_t> m_stg_runtime_id;		//每个策略的运行时id
+
+	HttpGateway m_http_gw;
+	std::map<std::string, url_key> m_id_key;
+	std::string m_so_svr_prefix, m_working_path;
 
 	crx::xml_parser m_xml;
 	data_manager *m_data_recv;

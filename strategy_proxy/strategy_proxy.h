@@ -1,9 +1,12 @@
 #pragma once
 
 #include "crx_pch.h"
+#include "E15_value.h"
 #include "E15_socket.h"
 #include "E15_server.h"
 #include "E15_ini.h"
+
+#include "stock_msg.h"
 
 struct node_sub {
 	E15_Id id;
@@ -47,7 +50,7 @@ public:
 	virtual ~proxy() {}
 
 public:
-    virtual bool init(int argc,char * argv[]) {
+    virtual bool init(bool is_service, int argc,char * argv[]) {
     	m_trans.start();
     	return true;
     }

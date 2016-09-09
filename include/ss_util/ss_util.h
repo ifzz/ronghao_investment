@@ -34,12 +34,12 @@ public:
 	,m_mgr_ptr(nullptr)
 	,m_this_stg(base)
 	,m_current_date(0)
-	,m_trade_import(nullptr)
-	,m_print_screen(true) {}
+	,m_trade_import(nullptr) {}
 	virtual ~sb_impl() {}
 
 	void read_config(const char *config);
 	void on_init();
+	void record_trade(const std::string& buf, unsigned int trade_date);
 
 	unsigned int m_stg_id;			//策略id
 	unsigned short m_src_id;		//下单源id
@@ -49,7 +49,6 @@ public:
 	unsigned int m_current_date;
 	FILE *m_trade_import;
 	char format_buf[1024];
-	bool m_print_screen;
 	E15_Log m_log;			//每个具体的策略都有一个私有的日志
 
 	dia_group file_dia;
@@ -71,12 +70,14 @@ struct contract_info {
 extern crx::evd_thread_pool g_log_th;
 extern std::shared_ptr<log_handle> g_log_hd;
 
+static int g_stg_id = 0;
+
 class ss_util : public crx::console {
 public:
 	ss_util();
 	virtual ~ss_util();
 
-	virtual bool init(int argc, char *argv[]) { return true; }
+	virtual bool init(bool is_service, int argc, char *argv[]) { return true; }
 	virtual void destroy() {}
 
 	ContractInfo get_ins_info(const std::string& id);
@@ -85,12 +86,12 @@ public:
 	void load_dia_hiscache(const std::string& id, int data_index, DiagramDataHandler *h, short store_level, void *obj);
 	void make_index_for_cache();
 
-	virtual unsigned int get_usable_stg_id() { return 0; }
-	virtual void send_instruction(const std::string& ins_id, order_instruction& oi) = 0;
+	virtual unsigned int get_usable_stg_id() { return g_stg_id++; }
+	virtual void send_instruction(const std::string& ins_id, order_instruction& oi){}
 
 protected:
-	void parse_ini();
-	void global_log_init();
+	void parse_ini(bool is_service);
+	void global_log_init(bool need_history_store);
 	void global_log_destroy();
 
 	void parse_instrument_list(const char *data, int len);

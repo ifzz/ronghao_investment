@@ -1,57 +1,11 @@
 #include "data_manager.h"
 #include "strategy_manager.h"
 
-int file_receiver::connect_file_server() {
-	Init(&g_socket);
-	int ret_code = Connect(g_conf.so_addr.c_str(), g_conf.so_port);
-	print_thread_safe(g_log, "成功启动本地http客户端用于接收远程策略so以及ini\n");
-	return ret_code;
-}
+E15_Socket g_socket;
 
-int file_receiver::request_file_by_url(const std::string& url) {
-	if (!IsConnect())
-		return 0;
+void data_manager::connect_data_server() {
+	g_socket.Start();
 
-	auto args = crx::split(url, " ");
-	Request("GET", args[0].c_str(), 0, 0);
-	Request("GET", args[1].c_str(), 0, 0);
-	m_ini_so[args[1]] = args[0];
-	print_thread_safe(g_log, "请求文件 url=%s\n", url.c_str());
-	return 0;
-}
-
-void file_receiver::OnResponed(const char * url, int status, E15_ValueTable *& header,
-		E15_String *& data, E15_Id * session_id) {
-	if (200 != status) {
-		print_thread_safe(g_log, "文件请求失败 url=%s\n", url);
-		return;
-	}
-
-//	std::string file = url;
-//	std::string local_file = STRATEGY_DIR+file.substr(file.rfind("/")+1);
-//
-//	FILE *p = fopen(local_file.c_str(), "w");
-//	fputs(data->c_str(), p);
-//	fclose(p);
-//
-//	if (std::string::npos != file.rfind(".ini")) {		//已同时取到so和ini文件
-//		std::string so_file = m_ini_so[file];
-//		so_file = STRATEGY_DIR+so_file.substr(so_file.rfind("/")+1);
-//		std::vector<std::string> args = {so_file, local_file};
-//		m_data_mgr->load_strategy(args);
-//	}
-}
-
-data_manager::data_manager(strategy_manager *data_mgr)
-:m_data_mgr(data_mgr) {
-	m_file_receiver = new file_receiver(this);
-}
-
-data_manager::~data_manager() {
-	delete m_file_receiver;
-}
-
-int data_manager::connect_data_server() {
 #ifdef RUN_AS_CLIENT
 	Start(&g_socket);
 
@@ -64,17 +18,14 @@ int data_manager::connect_data_server() {
 #else
 	Start(&g_socket, "ini/socket.ini");
 #endif
-	print_thread_safe(g_log, "成功连接行情服务器\n");
-	return m_file_receiver->connect_file_server();
 }
 
 void data_manager::terminate_connect() {
-	m_file_receiver->Close();
-
 #ifdef RUN_AS_CLIENT
 	Logout(&m_proxy_id);
 #endif
 	Stop();
+	g_socket.Stop();
 }
 
 #ifdef RUN_AS_CLIENT
@@ -124,18 +75,6 @@ int data_manager::OnClose(E15_ServerInfo * info) {
 
 void data_manager::OnRequest(E15_ServerInfo * info,E15_ServerRoute * rt,E15_ServerCmd * cmd,E15_String *& data) {
 	switch (cmd->cmd) {
-	case OPERA_LOAD: {
-		//总是从文件服务器中取so，保证每次执行的都是最新的
-		m_file_receiver->request_file_by_url(data->c_str());		//so
-		break;
-	}
-	case OPERA_UNLOAD: {
-//			auto args = crx::split(data->c_str(), " ");
-//			std::string so = STRATEGY_DIR+args[0].substr(args[0].rfind("/")+1);
-//			std::string ini = STRATEGY_DIR+args[1].substr(args[1].rfind("/")+1);
-//			m_data_mgr->unload_strategy(std::vector<std::string>({so, ini}));
-		break;
-	}
 	}
 }
 

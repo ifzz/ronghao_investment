@@ -2,27 +2,7 @@
 
 #include "rhafx.h"
 extern stg_config g_conf;
-
-enum STRATEGY_OPERA {
-	OPERA_LOAD = 0,
-	OPERA_UNLOAD,
-};
-
-class data_manager;
-class file_receiver : public E15_HttpClient {
-public:
-	file_receiver(data_manager *data_mgr) : m_data_mgr(data_mgr) {}
-	virtual ~file_receiver() {}
-
-public:
-	int connect_file_server();
-	int request_file_by_url(const std::string& url);
-	virtual void OnResponed(const char * url,int status,E15_ValueTable *& header,E15_String *& data,E15_Id * session_id);
-
-private:
-	data_manager *m_data_mgr;
-	std::map<std::string, std::string> m_ini_so;
-};
+extern E15_Socket g_socket;
 
 //#define RUN_AS_CLIENT
 
@@ -33,11 +13,11 @@ class data_manager : public E15_Client {
 class data_manager : public E15_Server {
 #endif
 public:
-	data_manager(strategy_manager *data_mgr);
-	virtual ~data_manager();
+	data_manager(strategy_manager *data_mgr) : m_data_mgr(data_mgr) {}
+	virtual ~data_manager() {}
 
 public:
-	int connect_data_server();
+	void connect_data_server();
 	void terminate_connect();
 
 	void request_subscribe_by_id(E15_StringArray& sa, int start, int end, int interval);
@@ -74,5 +54,4 @@ private:
 	std::list<E15_Id> m_client_id;
 	std::map<std::string, std::list<E15_Id>> m_server_id;
 	strategy_manager *m_data_mgr;
-	file_receiver *m_file_receiver;
 };

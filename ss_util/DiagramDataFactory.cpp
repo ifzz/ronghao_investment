@@ -108,7 +108,6 @@ int on_data_desc(E15_Key * k,E15_Value *v,E15_Queue *q)
 	pp.parent_index = index;
 	pp.q = desc->m_sub;
 	t->each( (int (*)(E15_Key * k,E15_Value *v,void *))on_tag_desc,&pp);
-
 	return 0;
 }
 
@@ -125,6 +124,12 @@ void DataDescriptionMgr::InitDescription(const char *data, size_t len)
 	vt.Print();
 
 	vt.each( (int (*)(E15_Key * k,E15_Value *v,void *))on_data_desc,m_list);
+
+	for (unsigned long i = 0; i < m_list->Count(); ++i) {
+		DataDescription *desc = (DataDescription*)m_list->At(i, 0);
+		std::string diagram = std::to_string(desc->m_dt.param)+desc->m_dt.name+desc->m_dt.class_name;
+		m_type_dia[desc->m_dt.type_index] = diagram;
+	}
 }
 
 

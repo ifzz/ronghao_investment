@@ -51,8 +51,8 @@ public:
 private:
 	bool prev_twistbi_changed(dia_group& dia, ins_data& data);
 	void twist_init(const std::string& id, dia_group& dia, ins_data& data);
-	void cons_ding_form(MarketAnalyseTagBase *twist, MarketAnalyseKline *ext, ins_data& data);
-	void cons_di_form(MarketAnalyseTagBase *twist, MarketAnalyseKline *ext, ins_data& data);
+	void cons_ding_form(MarketAnalyseTagBase *twist, MarketAnalyseDataBase *base, MarketAnalyseKline *ext, ins_data& data);
+	void cons_di_form(MarketAnalyseTagBase *twist, MarketAnalyseDataBase *base, MarketAnalyseKline *ext, ins_data& data);
 	bool check_twistbi_exist(const std::string& id, dia_group& dia, ins_data& data);
 	void record_last_twistbi(dia_group& dia, ins_data& data);
 	void try_open_position(const std::string& id, MarketDepthData *depth, dia_group& dia, ins_data& data);

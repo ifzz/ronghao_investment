@@ -49,6 +49,7 @@
 									<listOptionValue builtIn="false" value="E15_stock_historyD"/>
 									<listOptionValue builtIn="false" value="E15_cxx_objectD"/>
 									<listOptionValue builtIn="false" value="E15_stock_analyseD"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="ss_util"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1486017584" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

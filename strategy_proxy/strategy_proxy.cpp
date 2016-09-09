@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <string.h>
-
 #include "strategy_proxy.h"
-#include "stock_msg.h"
-#include "E15_value.h"
 
 E15_Socket g_socket;
 

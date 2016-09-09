@@ -1,3 +1,3 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- strategy auto load conf -->
-<config five_minute_kline_1="0" sideways_false_breakthrough="0" strategy_demo1="0" strategy_demo2="0" strategy_demo4="0" twistbi560="1" turtle_rule="0" rollbbtall="0" rollbbtall_ver2="0" days10HCL="0" maxvol5min="0" strategy_demo3="0" max10vol1min="0"/>
+<config five_minute_kline_1="0" sideways_false_breakthrough="0" strategy_demo1="0" strategy_demo2="0" strategy_demo4="0" twistbi560="0" turtle_rule="0" rollbbtall="0" rollbbtall_ver2="0" days10HCL="0" maxvol5min="0" strategy_demo3="0" max10vol1min="0"/>
