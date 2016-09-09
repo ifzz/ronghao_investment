@@ -1,6 +1,0 @@
-[database]
-db_name = trade.db
-py_script = trade_import.py
-
-py_init_fname = cpp_main
-py_des_fname = cancel_import

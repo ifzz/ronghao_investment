@@ -1,7 +1,0 @@
-[database]
-db_name = trade.db
-py_script = trade_import.py
-dbimpo_dir = ../strategy_server/database_import/
-
-py_init_fname = cpp_main
-py_des_fname = cancel_import

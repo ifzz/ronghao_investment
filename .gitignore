@@ -3,8 +3,10 @@ strategy_server/.svn
 test_child/.svn
 include/.svn
 runtime/.svn
-strategy_library/libfive_minute_kline_1/.svn/
+strategy_library/libfive_minute_kline_1/.svn
 ver2/.svn
+http_gw/.svn
+runtime/trade_access/.svn
 
 runtime/strategy_server/log_files/
 runtime/history_md_server/log_files/
